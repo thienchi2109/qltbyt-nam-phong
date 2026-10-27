@@ -1,16 +1,20 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query"
-import { expect, it, vi } from "vitest"
-import { EquipmentDetailConfigTab } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailConfigTab"
+import { beforeEach, expect, it, vi } from "vitest"
+import { EquipmentDetailTemperatureTab } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailTemperatureTab"
 import { EquipmentDetailDialog } from "@/app/(app)/equipment/_components/EquipmentDetailDialog"
 import type { TemperatureChoices } from "@/types/temperature-monitoring"
 import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
 
-const { callRpc } = vi.hoisted(() => ({ callRpc: vi.fn() }))
+const { callRpc, session, dialogOpenChange } = vi.hoisted(() => ({
+  callRpc: vi.fn(),
+  session: { role: "to_qltb" },
+  dialogOpenChange: vi.fn(),
+}))
 vi.mock("@/lib/rpc-client", () => ({ callRpc }))
 vi.mock("next-auth/react", () => ({
-  useSession: () => ({ data: { user: { id: "302", role: "to_qltb", don_vi: 17 } } }),
+  useSession: () => ({ data: { user: { id: "302", role: session.role, don_vi: 17 } } }),
 }))
 vi.mock("@/components/ui/scroll-area", () => ({
   ScrollArea: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -56,6 +60,27 @@ const scheduledConfiguration: NonNullable<TemperatureChoices["configuration"]> =
   responsible_substitute_user_ids: null,
 }
 
+beforeEach(() => {
+  session.role = "to_qltb"
+  dialogOpenChange.mockClear()
+})
+
+function detailDialog() {
+  return (
+    <EquipmentDetailDialog
+      equipment={{ id: 3779, ten_thiet_bi: "Ngân hàng máu, 180 túi", ma_thiet_bi: "TB-3779" }}
+      open
+      onOpenChange={dialogOpenChange}
+      user={{ id: 302, role: session.role, khoa_phong: null }}
+      isRegionalLeader={false}
+      equipmentDataset="regular"
+      onGenerateProfileSheet={vi.fn()}
+      onGenerateDeviceLabel={vi.fn()}
+      onEquipmentUpdated={vi.fn()}
+    />
+  )
+}
+
 it.each([
   { state: "future-only", enabled: false, lower: null, upper: null },
   { state: "enabled without an effective version", enabled: true, lower: null, upper: null },
@@ -64,7 +89,7 @@ it.each([
   { state: "zero lower bound", enabled: true, lower: 0, upper: 8 },
   { state: "zero upper bound", enabled: true, lower: -2, upper: 0 },
 ])(
-  "opens the real configuration tab and displays a safe summary when $state",
+  "lazily opens the temperature tab and displays a safe summary when $state",
   async ({ enabled, lower, upper }) => {
     const configuration = {
       ...scheduledConfiguration,
@@ -96,32 +121,26 @@ it.each([
     })
     const user = userEvent.setup()
     const client = createTestQueryClient()
-    const view = render(
-      <EquipmentDetailDialog
-        equipment={{ id: 3779, ten_thiet_bi: "Ngân hàng máu, 180 túi", ma_thiet_bi: "TB-3779" }}
-        open
-        onOpenChange={vi.fn()}
-        user={{ id: 302, role: "to_qltb", khoa_phong: null }}
-        isRegionalLeader={false}
-        equipmentDataset="regular"
-        onGenerateProfileSheet={vi.fn()}
-        onGenerateDeviceLabel={vi.fn()}
-        onEquipmentUpdated={vi.fn()}
-      />,
-      { wrapper: createReactQueryWrapper(client) }
-    )
+    const view = render(detailDialog(), { wrapper: createReactQueryWrapper(client) })
     try {
       const dialog = within(screen.getByRole("dialog"))
       const details = dialog.getByRole("tab", { name: "Thông tin chi tiết" })
       const config = dialog.getByRole("tab", { name: "Cấu hình & Phụ kiện" })
+      const temperature = dialog.getByRole("tab", { name: "Sổ theo dõi nhiệt độ" })
+      const tabs = dialog.getAllByRole("tab")
+      expect(tabs[tabs.indexOf(config) + 1]).toBe(temperature)
       expect(details).toHaveAttribute("aria-selected", "true")
       expect(dialog.queryByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).toBeNull()
       expect(callRpc).not.toHaveBeenCalled()
 
       await user.click(config)
-
       expect(config).toHaveAttribute("aria-selected", "true")
-      const panel = within(dialog.getByRole("tabpanel", { name: "Cấu hình & Phụ kiện" }))
+      expect(dialog.queryByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).toBeNull()
+      expect(callRpc).not.toHaveBeenCalled()
+
+      await user.keyboard("{ArrowRight}")
+      expect(temperature).toHaveAttribute("aria-selected", "true")
+      const panel = within(dialog.getByRole("tabpanel", { name: "Sổ theo dõi nhiệt độ" }))
       expect(await panel.findByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).toHaveProperty(
         "checked",
         enabled
@@ -130,8 +149,8 @@ it.each([
       expect(panel.getByRole("button", { name: "Lưu cấu hình nhiệt độ" })).toBeDisabled()
 
       await user.click(details)
-      await user.click(config)
-      expect(config).toHaveAttribute("aria-selected", "true")
+      await user.click(temperature)
+      expect(temperature).toHaveAttribute("aria-selected", "true")
       expect(await dialog.findByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).toHaveProperty(
         "checked",
         enabled
@@ -206,21 +225,30 @@ it.each([
   const observer = new QueryObserver(client, { queryKey: equipmentKey, queryFn: pageQuery })
   const unsubscribe = observer.subscribe(() => {})
   const user = userEvent.setup()
-  const detail = () => (
-    <QueryClientProvider client={client}>
-      <EquipmentDetailConfigTab
-        displayEquipment={{ id: 3779, ten_thiet_bi: "Ngân hàng máu, 180 túi" }}
-        isEditing={false}
-      />
-    </QueryClientProvider>
-  )
+  const detail = () => <QueryClientProvider client={client}>{detailDialog()}</QueryClientProvider>
   const view = render(detail())
   try {
+    await user.click(screen.getByRole("tab", { name: "Sổ theo dõi nhiệt độ" }))
     await user.click(await screen.findByRole("checkbox", { name: "Bật theo dõi nhiệt độ" }))
     await user.type(screen.getByLabelText("Ngưỡng dưới °C"), "2")
     await user.type(screen.getByLabelText("Ngưỡng trên °C"), "8")
-    await user.selectOptions(screen.getByLabelText("Phụ trách chính"), "252")
+    await user.click(screen.getByRole("combobox", { name: "Phụ trách chính" }))
+    await user.click(await screen.findByRole("option", { name: "Khoa Xét Nghiệm" }))
     await user.type(screen.getByLabelText("Lý do thay đổi"), "Bật theo dõi nhiệt độ")
+    const primary = screen.getByRole("combobox", { name: "Phụ trách chính" })
+    await user.click(primary)
+    await user.keyboard("{Escape}")
+    expect(screen.queryByRole("listbox")).toBeNull()
+    expect(primary).toHaveFocus()
+    expect(dialogOpenChange).not.toHaveBeenCalledWith(false)
+    const substitutes = screen.getByLabelText("Nhân sự thay thế")
+    await user.click(substitutes)
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Khoa Xét Nghiệm" }))
+    await user.keyboard("{Escape}")
+    expect(screen.queryByRole("menu")).toBeNull()
+    expect(substitutes).toHaveFocus()
+    expect(dialogOpenChange).not.toHaveBeenCalledWith(false)
+    expect(screen.getByLabelText("Lý do thay đổi")).toHaveValue("Bật theo dõi nhiệt độ")
     await user.click(screen.getByRole("button", { name: "Lưu cấu hình nhiệt độ" }))
 
     const saving = await screen.findByRole("button", { name: "Đang lưu…" })
@@ -265,14 +293,97 @@ it.each([
       data: [{ id: 3779, temperature_monitoring_enabled: effective }],
     })
 
+    await user.click(screen.getByRole("tab", { name: "Thông tin chi tiết" }))
+    await user.click(screen.getByRole("tab", { name: "Sổ theo dõi nhiệt độ" }))
+    expect(await screen.findByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).toHaveProperty(
+      "checked",
+      effective
+    )
     view.rerender(<QueryClientProvider client={client}>{null}</QueryClientProvider>)
     view.rerender(detail())
+    await user.click(screen.getByRole("tab", { name: "Sổ theo dõi nhiệt độ" }))
     const checkbox = await screen.findByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })
     expect(checkbox).toHaveProperty("checked", effective)
     expect(screen.getByLabelText("Ngưỡng dưới °C")).toHaveValue(effective ? 2 : null)
+    await user.keyboard("{Escape}")
+    expect(dialogOpenChange).toHaveBeenCalledWith(false)
   } finally {
     view.unmount()
     unsubscribe()
     client.clear()
   }
+})
+
+it.each(["admin", "global", "to_qltb", "user"])(
+  "keeps the temperature tab visible and scopes configuration controls for %s",
+  async (role) => {
+    session.role = role
+    const manager = role !== "user"
+    callRpc.mockReset()
+    callRpc.mockImplementation(async ({ fn }: { fn: string }) => {
+      if (fn === "temperature_monitoring_configuration_choices")
+        return {
+          configuration: null,
+          methods: [{ code: "manual", name: "Nhập tay" }],
+          profiles: [{ id: "profile", code: "default", name: "Bốn ca" }],
+          server_now: "2026-10-27T03:00:00Z",
+          suggested_effective_from: "2026-10-27T17:00:00Z",
+        }
+      if (fn === "temperature_monitoring_staff_choices") return { items: [], next_cursor: null }
+      if (fn === "temperature_monitoring_configuration_get")
+        return [
+          {
+            ...scheduledConfiguration,
+            monitoring_enabled: true,
+            lower_c: 0,
+            upper_c: 8,
+            recording_method_code: "manual",
+            display_timezone: "Asia/Ho_Chi_Minh",
+          },
+        ]
+      throw new Error(`unexpected RPC ${fn}`)
+    })
+    const client = createTestQueryClient()
+    const user = userEvent.setup()
+    const view = render(detailDialog(), { wrapper: createReactQueryWrapper(client) })
+    try {
+      await user.click(screen.getByRole("tab", { name: "Sổ theo dõi nhiệt độ" }))
+      if (manager) {
+        expect(await screen.findByRole("button", { name: "Lưu cấu hình nhiệt độ" })).toBeEnabled()
+        expect(screen.getByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).not.toBeChecked()
+        expect(callRpc).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fn: "temperature_monitoring_configuration_choices",
+            args: { p_equipment_id: 3779 },
+          })
+        )
+      } else {
+        expect(await screen.findByText("0–8 °C · manual · Asia/Ho_Chi_Minh")).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: "Lưu cấu hình nhiệt độ" })).toBeNull()
+        expect(screen.queryByRole("combobox")).toBeNull()
+        expect(screen.getByRole("link", { name: "Mở sổ nhiệt độ" })).toHaveAttribute(
+          "href",
+          "/temperature-monitoring?equipment=3779"
+        )
+        expect(callRpc.mock.calls.map(([request]) => request.fn)).toEqual([
+          "temperature_monitoring_configuration_get",
+        ])
+      }
+    } finally {
+      view.unmount()
+      client.clear()
+    }
+  }
+)
+
+it("does not query or render temperature configuration while equipment editing", () => {
+  callRpc.mockReset()
+  const client = createTestQueryClient()
+  const view = render(<EquipmentDetailTemperatureTab displayEquipment={{ id: 3779 }} isEditing />, {
+    wrapper: createReactQueryWrapper(client),
+  })
+  expect(callRpc).not.toHaveBeenCalled()
+  expect(screen.queryByRole("button", { name: "Lưu cấu hình nhiệt độ" })).toBeNull()
+  view.unmount()
+  client.clear()
 })
