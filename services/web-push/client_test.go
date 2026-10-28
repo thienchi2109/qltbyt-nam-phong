@@ -43,11 +43,11 @@ func TestHTTPBackendSignsClaimBodyAndUsesContractPath(t *testing.T) {
 	}
 	backend.nonce = func() ([16]byte, error) { return nonce, nil }
 
-	response, err := backend.Claim(context.Background(), ClaimRequest{Version: 1, WorkerID: "oracle-web-push-1", Limit: 5, VAPIDKeyVersion: "staging-20260910-01", VAPIDFingerprint: "sha256:" + string(make([]byte, 64))})
+	response, err := backend.Claim(context.Background(), ClaimRequest{WorkerID: "oracle-web-push-1", Limit: 5, VAPIDKeyVersion: "staging-20260910-01", VAPIDFingerprint: "sha256:" + string(make([]byte, 64))})
 	if err != nil {
 		t.Fatalf("Claim() error = %v", err)
 	}
-	if response.Version != 1 || received.path != "/api/internal/web-push/v1/claim" {
+	if received.path != "/api/internal/web-push/v1/claim" {
 		t.Fatalf("response/path = %+v/%q", response, received.path)
 	}
 	if received.headers.Get("x-web-push-key-id") != "test-key-1" || received.headers.Get("x-web-push-timestamp") != "1789056000" || received.headers.Get("x-web-push-nonce") != hex.EncodeToString(nonce[:]) {
@@ -83,7 +83,7 @@ func TestHTTPBackendMapsAPIErrorWithoutLeakingResponseBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = backend.Report(context.Background(), ReportRequest{Version: 1, Results: []ReportItem{}})
+	_, err = backend.Report(context.Background(), ReportRequest{Results: []ReportItem{}})
 	if err == nil {
 		t.Fatal("Report() error = nil")
 	}
@@ -157,7 +157,7 @@ func TestHTTPBackendStopsAfterOneReplayRetry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = backend.Report(context.Background(), ReportRequest{Version: 1, Results: []ReportItem{}})
+	_, err = backend.Report(context.Background(), ReportRequest{Results: []ReportItem{}})
 	if err == nil {
 		t.Fatal("Report() error = nil")
 	}
@@ -197,7 +197,7 @@ func TestHTTPBackendRejectsNonContractClaimResponses(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = backend.Claim(context.Background(), ClaimRequest{Version: 1, WorkerID: "oracle-web-push-1", Limit: 5, VAPIDKeyVersion: "staging-20260910-01", VAPIDFingerprint: "sha256:" + string(make([]byte, 64))})
+			_, err = backend.Claim(context.Background(), ClaimRequest{WorkerID: "oracle-web-push-1", Limit: 5, VAPIDKeyVersion: "staging-20260910-01", VAPIDFingerprint: "sha256:" + string(make([]byte, 64))})
 			if err == nil {
 				t.Fatal("Claim() error = nil")
 			}
@@ -235,7 +235,7 @@ func TestHTTPBackendRejectsNonContractErrorResponses(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = backend.Report(context.Background(), ReportRequest{Version: 1, Results: []ReportItem{}})
+			_, err = backend.Report(context.Background(), ReportRequest{Results: []ReportItem{}})
 			if err == nil {
 				t.Fatal("Report() error = nil")
 			}
@@ -285,9 +285,9 @@ func TestHTTPBackendRetryPolicy(t *testing.T) {
 					backend.nonce = func() ([16]byte, error) { return [16]byte{}, transportErr }
 				}
 				if operation == "claim" {
-					_, err = backend.Claim(context.Background(), ClaimRequest{Version: 1})
+					_, err = backend.Claim(context.Background(), ClaimRequest{})
 				} else {
-					_, err = backend.Report(context.Background(), ReportRequest{Version: 1})
+					_, err = backend.Report(context.Background(), ReportRequest{})
 				}
 				var apiErr *APIError
 				if !errors.As(err, &apiErr) || apiErr.Status != tc.status {

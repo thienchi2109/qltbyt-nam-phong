@@ -11,7 +11,7 @@ var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 var workerIDPattern = regexp.MustCompile(`^[a-z0-9-]{1,64}$`)
 
 func validClaimResponse(response ClaimResponse) bool {
-	if response.Version != 1 || response.PollAfterSeconds != 5 || len(response.Deliveries) > claimLimit {
+	if response.PollAfterSeconds != 5 || len(response.Deliveries) > claimLimit {
 		return false
 	}
 	if _, err := parseTime(response.ServerTime); err != nil {
@@ -41,7 +41,7 @@ func validClaimResponse(response ClaimResponse) bool {
 }
 
 func validReportResponse(response ReportResponse, request ReportRequest) bool {
-	if response.Version != 1 || len(response.Results) != len(request.Results) {
+	if len(response.Results) != len(request.Results) {
 		return false
 	}
 	expected := make(map[string]struct{}, len(request.Results))

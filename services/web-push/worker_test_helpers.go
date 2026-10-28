@@ -41,7 +41,7 @@ func (f *fakeAPI) Report(_ context.Context, request ReportRequest) (ReportRespon
 	for index, item := range request.Results {
 		results[index] = ReportResult{DeliveryID: item.DeliveryID, Result: "applied"}
 	}
-	return ReportResponse{Version: 1, Results: results}, nil
+	return ReportResponse{Results: results}, nil
 }
 
 type fakeSender struct {

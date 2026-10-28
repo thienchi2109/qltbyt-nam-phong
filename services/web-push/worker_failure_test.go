@@ -232,7 +232,7 @@ func newFailureWorker(t *testing.T, backend Backend, sender Sender, now func() t
 }
 
 func claimResponseAt(now time.Time, deliveries []Delivery) ClaimResponse {
-	return ClaimResponse{Version: 1, ServerTime: now.Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: deliveries}
+	return ClaimResponse{ServerTime: now.Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: deliveries}
 }
 
 func reportResponse(request ReportRequest, result string) ReportResponse {
@@ -240,7 +240,7 @@ func reportResponse(request ReportRequest, result string) ReportResponse {
 	for index, item := range request.Results {
 		results[index] = ReportResult{DeliveryID: item.DeliveryID, Result: result}
 	}
-	return ReportResponse{Version: 1, Results: results}
+	return ReportResponse{Results: results}
 }
 
 func deliveryAt(now time.Time, index int) Delivery {

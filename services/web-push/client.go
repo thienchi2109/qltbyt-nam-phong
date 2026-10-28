@@ -99,15 +99,33 @@ func NewHTTPBackend(origin, keyID, secretBase64 string, client *http.Client) (*H
 }
 
 func (b *HTTPBackend) Claim(ctx context.Context, request ClaimRequest) (ClaimResponse, error) {
+	wireRequest := qltbytClaimRequest{
+		Version: 1, WorkerID: request.WorkerID, Limit: request.Limit,
+		VAPIDKeyVersion: request.VAPIDKeyVersion, VAPIDFingerprint: request.VAPIDFingerprint,
+	}
+	var wireResponse qltbytClaimResponse
 	var response ClaimResponse
-	err := b.doJSON(ctx, claimPath, request, &response, maxClaimResponse)
-	return response, backendError(err)
+	err := b.doJSON(ctx, claimPath, wireRequest, &wireResponse, maxClaimResponse, func() bool {
+		response = wireResponse.core()
+		return validClaimResponse(response)
+	})
+	if err != nil {
+		return ClaimResponse{}, backendError(err)
+	}
+	return response, nil
 }
 
 func (b *HTTPBackend) Report(ctx context.Context, request ReportRequest) (ReportResponse, error) {
+	var wireResponse qltbytReportResponse
 	var response ReportResponse
-	err := b.doJSON(ctx, reportPath, request, &response, maxReportResponse)
-	return response, backendError(err)
+	err := b.doJSON(ctx, reportPath, qltbytReport(request), &wireResponse, maxReportResponse, func() bool {
+		response = wireResponse.core()
+		return validReportResponse(response, request)
+	})
+	if err != nil {
+		return ReportResponse{}, backendError(err)
+	}
+	return response, nil
 }
 
 func backendError(err error) error {
@@ -127,10 +145,10 @@ func backendError(err error) error {
 	return result
 }
 
-func (b *HTTPBackend) doJSON(ctx context.Context, path string, request, response interface{}, maxResponse int64) error {
+func (b *HTTPBackend) doJSON(ctx context.Context, path string, request, response interface{}, maxResponse int64, validResponse func() bool) error {
 	var lastErr error
 	for attempt := 0; attempt < 2; attempt++ {
-		err := b.doJSONAttempt(ctx, path, request, response, maxResponse)
+		err := b.doJSONAttempt(ctx, path, request, response, maxResponse, validResponse)
 		var apiErr *APIError
 		if attempt == 0 && errors.As(err, &apiErr) && apiErr.Status == http.StatusConflict && apiErr.Code == "replay" {
 			lastErr = err
@@ -141,7 +159,7 @@ func (b *HTTPBackend) doJSON(ctx context.Context, path string, request, response
 	return lastErr
 }
 
-func (b *HTTPBackend) doJSONAttempt(ctx context.Context, path string, request, response interface{}, maxResponse int64) (resultErr error) {
+func (b *HTTPBackend) doJSONAttempt(ctx context.Context, path string, request, response interface{}, maxResponse int64, validResponse func() bool) (resultErr error) {
 	rawBody, err := json.Marshal(request)
 	if err != nil {
 		return &APIError{Err: err}
@@ -195,6 +213,9 @@ func (b *HTTPBackend) doJSONAttempt(ctx context.Context, path string, request, r
 	}
 	if err := validateResponseVersion(data, ""); err != nil {
 		return invalidResponseAPIError(res.StatusCode, err)
+	}
+	if !validResponse() {
+		return invalidResponseAPIError(res.StatusCode, errors.New("response violates backend contract"))
 	}
 	return nil
 }

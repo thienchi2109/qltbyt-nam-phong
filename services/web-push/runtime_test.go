@@ -28,7 +28,6 @@ func TestPausedWorkerDoesNotClaim(t *testing.T) {
 	delivery.LeaseExpiresAt = now.Add(45 * time.Second).Format(time.RFC3339)
 	delivery.Deadline = now.Add(time.Hour).Format(time.RFC3339)
 	api := &fakeAPI{claim: ClaimResponse{
-		Version:          1,
 		ServerTime:       now.Format(time.RFC3339),
 		PollAfterSeconds: 5,
 		Deliveries:       []Delivery{delivery},

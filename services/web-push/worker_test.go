@@ -40,7 +40,7 @@ func TestWorkerDoesNotClaimOrSendWhenVAPIDArtifactMismatches(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	api := &fakeAPI{claim: ClaimResponse{Version: 1}}
+	api := &fakeAPI{claim: ClaimResponse{}}
 	sender := &fakeSender{}
 	worker := NewWorker(WorkerConfig{
 		API:                 api,
@@ -70,7 +70,6 @@ func TestWorkerClaimsSendsAndReportsEachDelivery(t *testing.T) {
 	}
 	delivery := testDelivery()
 	api := &fakeAPI{claim: ClaimResponse{
-		Version:          1,
 		ServerTime:       time.Now().UTC().Format(time.RFC3339),
 		PollAfterSeconds: 5,
 		Deliveries:       []Delivery{delivery},
@@ -104,7 +103,6 @@ func TestWorkerRecordsFailedMetricForInvalidDelivery(t *testing.T) {
 	delivery.LeaseExpiresAt = now.Add(time.Minute).Format(time.RFC3339)
 	delivery.VAPIDKeyVersion = "other-version"
 	api := &fakeAPI{claim: ClaimResponse{
-		Version:          1,
 		ServerTime:       now.Format(time.RFC3339),
 		PollAfterSeconds: 5,
 		Deliveries:       []Delivery{delivery},
@@ -134,7 +132,6 @@ func TestWorkerReadinessTracksBackendCycle(t *testing.T) {
 	key := testVAPIDKey(t)
 	now := time.Date(2026, 9, 16, 12, 0, 0, 0, time.UTC)
 	api := &fakeAPI{claim: ClaimResponse{
-		Version:          1,
 		ServerTime:       now.Format(time.RFC3339),
 		PollAfterSeconds: 5,
 		Deliveries:       []Delivery{testDelivery()},
@@ -180,7 +177,7 @@ func TestWorkerClampsProviderTTLToRemainingDeadline(t *testing.T) {
 	delivery.LeaseExpiresAt = now.Add(45 * time.Second).Format(time.RFC3339)
 	delivery.Deadline = now.Add(31 * time.Second).Format(time.RFC3339)
 	delivery.TTLSeconds = 86400
-	api := &fakeAPI{claim: ClaimResponse{Version: 1, ServerTime: now.Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: []Delivery{delivery}}}
+	api := &fakeAPI{claim: ClaimResponse{ServerTime: now.Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: []Delivery{delivery}}}
 	sender := &fakeSender{result: ProviderResult{Status: 201}}
 	worker := NewWorker(WorkerConfig{
 		API:                 api,
@@ -213,7 +210,6 @@ func TestWorkerUsesServerClockBeforeSending(t *testing.T) {
 	delivery.LeaseExpiresAt = now.Add(15 * time.Second).Format(time.RFC3339)
 	delivery.Deadline = now.Add(time.Minute).Format(time.RFC3339)
 	api := &fakeAPI{claim: ClaimResponse{
-		Version:          1,
 		ServerTime:       now.Add(5 * time.Second).Format(time.RFC3339),
 		PollAfterSeconds: 5,
 		Deliveries:       []Delivery{delivery},
@@ -249,7 +245,7 @@ func TestWorkerGivesProviderTenSecondDeadlineWhenDeliveryAllowsIt(t *testing.T) 
 	delivery := testDelivery()
 	delivery.LeaseExpiresAt = now.Add(time.Minute).Format(time.RFC3339)
 	delivery.Deadline = now.Add(time.Minute).Format(time.RFC3339)
-	api := &fakeAPI{claim: ClaimResponse{Version: 1, ServerTime: now.Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: []Delivery{delivery}}}
+	api := &fakeAPI{claim: ClaimResponse{ServerTime: now.Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: []Delivery{delivery}}}
 	sender := &fakeSender{result: ProviderResult{Status: 201}}
 	worker := NewWorker(WorkerConfig{
 		API:                 api,
@@ -328,7 +324,7 @@ func TestWorkerRetriesReportWithBoundedDelays(t *testing.T) {
 		t.Fatal(err)
 	}
 	api := &fakeAPI{
-		claim:      ClaimResponse{Version: 1, ServerTime: time.Now().UTC().Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: []Delivery{testDelivery()}},
+		claim:      ClaimResponse{ServerTime: time.Now().UTC().Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: []Delivery{testDelivery()}},
 		reportErrs: []error{errors.New("first"), errors.New("second")},
 	}
 	sender := &fakeSender{result: ProviderResult{Status: 201}}
@@ -355,7 +351,7 @@ func TestWorkerHonorsReportRetryAfter(t *testing.T) {
 	key := testVAPIDKey(t)
 	retryAfter := 3 * time.Second
 	api := &fakeAPI{
-		claim:      ClaimResponse{Version: 1, ServerTime: time.Now().UTC().Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: []Delivery{testDelivery()}},
+		claim:      ClaimResponse{ServerTime: time.Now().UTC().Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: []Delivery{testDelivery()}},
 		reportErrs: []error{&BackendError{Retryable: true, RetryAfter: &retryAfter}},
 	}
 	sender := &fakeSender{result: ProviderResult{Status: 201}}
@@ -388,7 +384,7 @@ func TestWorkerRunStopsAfterCancellation(t *testing.T) {
 	}
 	block := make(chan struct{})
 	started := make(chan struct{}, 1)
-	api := &fakeAPI{claim: ClaimResponse{Version: 1, ServerTime: time.Now().UTC().Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: []Delivery{testDelivery()}}}
+	api := &fakeAPI{claim: ClaimResponse{ServerTime: time.Now().UTC().Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: []Delivery{testDelivery()}}}
 	sender := &fakeSender{started: started, block: block}
 	worker := NewWorker(WorkerConfig{
 		API:                 api,

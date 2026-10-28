@@ -164,7 +164,6 @@ func (w *Worker) runOnce(ctx context.Context) (time.Duration, bool, error) {
 		return 0, false, fmt.Errorf("%w: dependencies unavailable", ErrWorkerNotReady)
 	}
 	claim := ClaimRequest{
-		Version:          1,
 		WorkerID:         w.workerID,
 		Limit:            claimLimit,
 		VAPIDKeyVersion:  w.vapid.Version,
@@ -196,7 +195,7 @@ func (w *Worker) runOnce(ctx context.Context) (time.Duration, bool, error) {
 		w.setReady(true)
 		return pollDelay(response), false, nil
 	}
-	if err := w.reportWithRetry(ctx, ReportRequest{Version: 1, Results: results}, earliestLease, func() time.Time {
+	if err := w.reportWithRetry(ctx, ReportRequest{Results: results}, earliestLease, func() time.Time {
 		return w.now().UTC().Add(serverOffset)
 	}); err != nil {
 		w.setReady(false)

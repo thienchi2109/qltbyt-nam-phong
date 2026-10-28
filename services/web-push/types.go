@@ -6,62 +6,58 @@ import (
 )
 
 type ClaimRequest struct {
-	Version          int    `json:"version"`
-	WorkerID         string `json:"worker_id"`
-	Limit            int    `json:"limit"`
-	VAPIDKeyVersion  string `json:"vapid_key_version"`
-	VAPIDFingerprint string `json:"vapid_fingerprint"`
+	WorkerID         string
+	Limit            int
+	VAPIDKeyVersion  string
+	VAPIDFingerprint string
 }
 
 type ClaimResponse struct {
-	Version          int        `json:"version"`
-	ServerTime       string     `json:"server_time"`
-	PollAfterSeconds int        `json:"poll_after_seconds"`
-	Deliveries       []Delivery `json:"deliveries"`
+	ServerTime       string
+	PollAfterSeconds int
+	Deliveries       []Delivery
 }
 
 type Delivery struct {
-	DeliveryID           string           `json:"delivery_id"`
-	AttemptToken         string           `json:"attempt_token"`
-	Attempt              int              `json:"attempt"`
-	SubscriptionID       string           `json:"subscription_id"`
-	SubscriptionRevision string           `json:"subscription_revision"`
-	LeaseExpiresAt       string           `json:"lease_expires_at"`
-	Deadline             string           `json:"deadline"`
-	TTLSeconds           int              `json:"ttl_seconds"`
-	VAPIDKeyVersion      string           `json:"vapid_key_version"`
-	Endpoint             string           `json:"endpoint"`
-	Keys                 SubscriptionKeys `json:"keys"`
-	PayloadBase64        string           `json:"payload_base64"`
+	DeliveryID           string
+	AttemptToken         string
+	Attempt              int
+	SubscriptionID       string
+	SubscriptionRevision string
+	LeaseExpiresAt       string
+	Deadline             string
+	TTLSeconds           int
+	VAPIDKeyVersion      string
+	Endpoint             string
+	Keys                 SubscriptionKeys
+	PayloadBase64        string
 }
 
 type SubscriptionKeys struct {
-	P256DH string `json:"p256dh"`
-	Auth   string `json:"auth"`
+	P256DH string
+	Auth   string
 }
 
 type ReportRequest struct {
-	Version int          `json:"version"`
-	Results []ReportItem `json:"results"`
+	Results []ReportItem
 }
 
 type ReportItem struct {
-	DeliveryID           string `json:"delivery_id"`
-	AttemptToken         string `json:"attempt_token"`
-	SubscriptionRevision string `json:"subscription_revision"`
-	Outcome              string `json:"outcome"`
-	ProviderStatus       *int   `json:"provider_status"`
-	RetryAfterSeconds    *int   `json:"retry_after_seconds"`
+	DeliveryID           string
+	AttemptToken         string
+	SubscriptionRevision string
+	Outcome              string
+	ProviderStatus       *int
+	RetryAfterSeconds    *int
 }
 
 type ReportResponse struct {
-	Version int            `json:"version"`
-	Results []ReportResult `json:"results"`
+	Results []ReportResult
 }
 
 type ReportResult struct {
-	DeliveryID string `json:"delivery_id"`
-	Result     string `json:"result"`
+	DeliveryID string
+	Result     string
 }
 
 type ProviderResult struct {

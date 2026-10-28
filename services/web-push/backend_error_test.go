@@ -99,7 +99,7 @@ func TestWorkerReportRetryPolicy(t *testing.T) {
 				now = now.Add(delay)
 				return nil
 			}
-			err := worker.reportWithRetry(context.Background(), ReportRequest{Version: 1}, now.Add(time.Minute), func() time.Time { return now })
+			err := worker.reportWithRetry(context.Background(), ReportRequest{}, now.Add(time.Minute), func() time.Time { return now })
 			if !errors.Is(err, tc.err) || backend.reportCalls != tc.calls || !reflect.DeepEqual(delays, tc.delays) {
 				t.Fatalf("error/calls/delays = %v/%d/%v, want original error/%d/%v", err, backend.reportCalls, delays, tc.calls, tc.delays)
 			}

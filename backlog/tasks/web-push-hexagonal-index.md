@@ -1,6 +1,6 @@
 # Web Push dùng chung — Hexagonal Backlog
 
-- Status: In Progress — WP-01–WP-02 Done; WP-03–WP-08 To Do
+- Status: In Progress — WP-01–WP-03 Done; WP-04–WP-08 To Do
 - Created: 2026-10-28
 - Milestone: Shared Web Push / Hexagonal
 - Survey baseline: `af8002880066d04a47b3de8db4d1d3310d65d6a1`
@@ -21,7 +21,9 @@ phụ thuộc vào file ngoài repo.
 WP-01 đã review: [Assessment, boundary, contract và pilot](../../docs/architecture/web-push-hexagonal-assessment.md),
 source baseline `9f2b9c4c`; WP-01 hoàn tất tại `85b990ec`.
 WP-02 hoàn tất pilot backend error boundary tại Go service, giữ nguyên wire v1;
-focused/full/race, vet và review độc lập PASS. Chưa bắt đầu WP-03.
+focused/full/race, vet và review độc lập PASS. WP-03 đã tách DTO v1 khỏi core;
+local contract/full/race/vet và hai review độc lập PASS trên branch
+`refactor/web-push-wp-03`; chưa merge/push hay rollout.
 
 ## Quyết định định hướng
 
@@ -45,7 +47,7 @@ focused/full/race, vet và review độc lập PASS. Chưa bắt đầu WP-03.
 | -------------------------------------------------- | ------------------------------------ | ------------ | ----------------------------------------------------- |
 | [WP-01](WP-01-architecture-contract-and-pilot.md)  | Chốt boundary, contract và pilot     | None         | Assessment và contract đủ để triển khai từng phần     |
 | [WP-02](WP-02-delivery-core-pilot.md)              | Pilot tách delivery core             | WP-01        | Core dùng port hiện có, giữ hành vi một app           |
-| [WP-03](WP-03-qltbyt-backend-adapter.md)           | Adapter QLTBYT                       | WP-02        | Adapter claim/report giữ contract và quyền hiện tại   |
+| [WP-03](WP-03-qltbyt-backend-adapter.md)           | Adapter QLTBYT                       | WP-02        | Done local; DTO v1 tách khỏi core, review PASS        |
 | [WP-04](WP-04-app-identity-and-configuration.md)   | Định danh và cấu hình theo app       | WP-02        | App context tin cậy, credential và VAPID tách biệt    |
 | [WP-05](WP-05-multi-app-runtime.md)                | Runtime nhiều app                    | WP-03, WP-04 | Điều phối, giới hạn tải và cô lập lỗi theo app        |
 | [WP-06](WP-06-second-app-integration-proof.md)     | Chứng minh tích hợp app thứ hai      | WP-05        | Adapter/fixture độc lập chạy cùng QLTBYT              |
