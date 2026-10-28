@@ -23,6 +23,8 @@ service dùng chung phần delivery; không mặc định tạo API/store trung 
 
 ## Acceptance criteria
 
+- [ ] Kiến trúc giữ Go cho core, adapter phía service, runtime và entrypoint;
+      tích hợp phía app giữ stack hiện tại. Ràng buộc này áp dụng WP-01–WP-08.
 - [ ] Assessment chỉ rõ coupling có bằng chứng file/symbol; giữ các thiết kế
       đã hợp lý, nhất là `Backend` và `Sender`.
 - [ ] Contract định nghĩa delivery, claim/lease/report, retry, revision,

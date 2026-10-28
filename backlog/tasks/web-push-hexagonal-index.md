@@ -20,6 +20,9 @@ phụ thuộc vào file ngoài repo.
 
 ## Quyết định định hướng
 
+- Giữ ngôn ngữ Go cho service dùng chung, gồm delivery core, adapter phía
+  service, runtime và entrypoint; tái sử dụng module `services/web-push`.
+  Tích hợp phía app QLTBYT tiếp tục dùng stack Next.js/TypeScript hiện tại.
 - Bắt đầu từ `Backend` và `Sender` sẵn có trong `services/web-push/types.go`;
   không mặc định viết lại worker hay đổi toàn bộ cấu trúc thư mục.
 - Giữ outbox nguyên tử, chọn người nhận và kiểm tra quyền tại từng app.
