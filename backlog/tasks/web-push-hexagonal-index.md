@@ -1,6 +1,6 @@
 # Web Push dùng chung — Hexagonal Backlog
 
-- Status: To Do
+- Status: In Progress — WP-01 Done; WP-02–WP-08 To Do
 - Created: 2026-10-28
 - Milestone: Shared Web Push / Hexagonal
 - Survey baseline: `af8002880066d04a47b3de8db4d1d3310d65d6a1`
@@ -17,6 +17,9 @@ dụng thiết kế tốt, pilot nhỏ, Strangler Fig, Go idioms và tránh abst
 không cần thiết cho Web Push. Không mở rộng phạm vi sang LabOps. WP-01 phải
 ghi lại kết luận áp dụng trong tài liệu versioned để người tiếp quản không
 phụ thuộc vào file ngoài repo.
+
+WP-01 đã review: [Assessment, boundary, contract và pilot](../../docs/architecture/web-push-hexagonal-assessment.md),
+source baseline `9f2b9c4c`; WP-01 hoàn tất, chưa triển khai WP-02.
 
 ## Quyết định định hướng
 
