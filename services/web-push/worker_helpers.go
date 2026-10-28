@@ -125,14 +125,14 @@ func lastErrOrLeaseError(err error) error {
 }
 
 func isRetryableWorkerError(err error) bool {
-	var apiErr *APIError
-	if errors.As(err, &apiErr) {
-		return apiErr.Status == 0 || apiErr.Status == 429 || apiErr.Status == 503 || apiErr.Status >= 500
+	var backendErr *BackendError
+	if errors.As(err, &backendErr) {
+		return backendErr.Retryable
 	}
 	return !errors.Is(err, ErrInvalidResponse)
 }
 
 func isDisabledError(err error) bool {
-	var apiErr *APIError
-	return errors.As(err, &apiErr) && apiErr.Code == "disabled"
+	var backendErr *BackendError
+	return errors.As(err, &backendErr) && backendErr.Disabled
 }

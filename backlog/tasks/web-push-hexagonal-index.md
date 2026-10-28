@@ -1,6 +1,6 @@
 # Web Push dùng chung — Hexagonal Backlog
 
-- Status: In Progress — WP-01 Done; WP-02–WP-08 To Do
+- Status: In Progress — WP-01–WP-02 Done; WP-03–WP-08 To Do
 - Created: 2026-10-28
 - Milestone: Shared Web Push / Hexagonal
 - Survey baseline: `af8002880066d04a47b3de8db4d1d3310d65d6a1`
@@ -9,7 +9,7 @@
 
 Tái sử dụng service Web Push cho nhiều app bằng Ports & Adapters, chuyển đổi
 từng phần và giữ tương thích với QLTBYT. Chỉ Web Push, không gồm ZBS/Zalo.
-Đợt này tạo backlog; chưa triển khai code, migration hay thao tác live.
+Trạng thái triển khai và evidence được cập nhật theo từng task; chưa rollout.
 
 Tham chiếu người dùng cung cấp: `/root/docs/hexagonal-architect.md` trên VPS.
 Đây là hướng dẫn đánh giá kiến trúc cho LabOps; áp dụng các nguyên tắc tái sử
@@ -19,7 +19,9 @@ ghi lại kết luận áp dụng trong tài liệu versioned để người ti�
 phụ thuộc vào file ngoài repo.
 
 WP-01 đã review: [Assessment, boundary, contract và pilot](../../docs/architecture/web-push-hexagonal-assessment.md),
-source baseline `9f2b9c4c`; WP-01 hoàn tất, chưa triển khai WP-02.
+source baseline `9f2b9c4c`; WP-01 hoàn tất tại `85b990ec`.
+WP-02 hoàn tất pilot backend error boundary tại Go service, giữ nguyên wire v1;
+focused/full/race, vet và review độc lập PASS. Chưa bắt đầu WP-03.
 
 ## Quyết định định hướng
 

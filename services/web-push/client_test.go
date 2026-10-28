@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -89,8 +90,8 @@ func TestHTTPBackendMapsAPIErrorWithoutLeakingResponseBody(t *testing.T) {
 	if got := err.Error(); got == "" || containsSecret(got) {
 		t.Fatalf("error leaked response body: %q", got)
 	}
-	apiErr, ok := err.(*APIError)
-	if !ok || apiErr.Status != http.StatusTooManyRequests {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusTooManyRequests {
 		t.Fatalf("error = %#v", err)
 	}
 }
@@ -163,8 +164,8 @@ func TestHTTPBackendStopsAfterOneReplayRetry(t *testing.T) {
 	if calls != 2 {
 		t.Fatalf("replay calls = %d, want 2", calls)
 	}
-	apiErr, ok := err.(*APIError)
-	if !ok || apiErr.Status != http.StatusConflict || apiErr.Code != "replay" {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusConflict || apiErr.Code != "replay" {
 		t.Fatalf("error = %#v, want replay conflict", err)
 	}
 }
@@ -200,8 +201,8 @@ func TestHTTPBackendRejectsNonContractClaimResponses(t *testing.T) {
 			if err == nil {
 				t.Fatal("Claim() error = nil")
 			}
-			apiErr, ok := err.(*APIError)
-			if !ok || apiErr.Code != tc.code {
+			var apiErr *APIError
+			if !errors.As(err, &apiErr) || apiErr.Code != tc.code {
 				t.Fatalf("Claim() error = %#v, want code %q", err, tc.code)
 			}
 		})
@@ -238,11 +239,79 @@ func TestHTTPBackendRejectsNonContractErrorResponses(t *testing.T) {
 			if err == nil {
 				t.Fatal("Report() error = nil")
 			}
-			apiErr, ok := err.(*APIError)
-			if !ok || apiErr.Code != tc.code {
+			var apiErr *APIError
+			if !errors.As(err, &apiErr) || apiErr.Code != tc.code {
 				t.Fatalf("Report() error = %#v, want code %q", err, tc.code)
 			}
 		})
+	}
+}
+
+func TestHTTPBackendRetryPolicy(t *testing.T) {
+	cases := []struct {
+		name      string
+		status    int
+		body      string
+		retryable bool
+		disabled  bool
+		retry     time.Duration
+		invalid   bool
+	}{
+		{"transport", 0, "", true, false, 0, false},
+		{"rate limit", 429, `{"version":1,"error":{"code":"rate_limited","retry_after_seconds":30}}`, true, false, 30 * time.Second, false},
+		{"disabled", 503, `{"version":1,"error":{"code":"disabled","retry_after_seconds":90}}`, true, true, 90 * time.Second, false},
+		{"terminal disabled", 400, `{"version":1,"error":{"code":"disabled"}}`, false, true, 0, false},
+		{"terminal", 401, `{"version":1,"error":{"code":"unauthorized"}}`, false, false, 0, false},
+		{"malformed success", 200, `{`, false, false, 0, true},
+		{"malformed rate limit", 429, `{`, true, false, 0, true},
+		{"malformed unavailable", 503, `{`, true, false, 0, true},
+		{"malformed server error", 500, `{`, true, false, 0, true},
+		{"status above 599", 600, `{"version":1,"error":{"code":"unavailable"}}`, true, false, 0, false},
+	}
+	for _, operation := range []string{"claim", "report"} {
+		for _, tc := range cases {
+			t.Run(operation+"/"+tc.name, func(t *testing.T) {
+				server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+					writer.WriteHeader(tc.status)
+					_, _ = writer.Write([]byte(tc.body))
+				}))
+				defer server.Close()
+				backend, err := NewHTTPBackend(server.URL, "test-key-1", base64.StdEncoding.EncodeToString(make([]byte, 32)), server.Client())
+				if err != nil {
+					t.Fatal(err)
+				}
+				transportErr := errors.New("entropy unavailable")
+				if tc.status == 0 {
+					backend.nonce = func() ([16]byte, error) { return [16]byte{}, transportErr }
+				}
+				if operation == "claim" {
+					_, err = backend.Claim(context.Background(), ClaimRequest{Version: 1})
+				} else {
+					_, err = backend.Report(context.Background(), ReportRequest{Version: 1})
+				}
+				var apiErr *APIError
+				if !errors.As(err, &apiErr) || apiErr.Status != tc.status {
+					t.Fatalf("error = %v, want wrapped APIError status %d", err, tc.status)
+				}
+				var backendErr *BackendError
+				if !errors.As(err, &backendErr) || backendErr.Retryable != tc.retryable || backendErr.Disabled != tc.disabled {
+					t.Fatalf("backend error = %#v, want retryable=%v disabled=%v", backendErr, tc.retryable, tc.disabled)
+				}
+				if isRetryableWorkerError(err) != tc.retryable || isDisabledError(err) != tc.disabled {
+					t.Fatalf("retryable/disabled = %v/%v, want %v/%v", isRetryableWorkerError(err), isDisabledError(err), tc.retryable, tc.disabled)
+				}
+				if errors.Is(err, ErrInvalidResponse) != tc.invalid || (tc.status == 0 && !errors.Is(err, transportErr)) {
+					t.Fatalf("wrapped error diagnostics = %v", err)
+				}
+				var retry time.Duration
+				if backendErr.RetryAfter != nil {
+					retry = *backendErr.RetryAfter
+				}
+				if retry != tc.retry || err.Error() != apiErr.Error() {
+					t.Fatalf("retry/diagnostic = %v/%q, want %v/%q", retry, err.Error(), tc.retry, apiErr.Error())
+				}
+			})
+		}
 	}
 }
 

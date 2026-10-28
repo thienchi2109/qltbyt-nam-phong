@@ -101,13 +101,30 @@ func NewHTTPBackend(origin, keyID, secretBase64 string, client *http.Client) (*H
 func (b *HTTPBackend) Claim(ctx context.Context, request ClaimRequest) (ClaimResponse, error) {
 	var response ClaimResponse
 	err := b.doJSON(ctx, claimPath, request, &response, maxClaimResponse)
-	return response, err
+	return response, backendError(err)
 }
 
 func (b *HTTPBackend) Report(ctx context.Context, request ReportRequest) (ReportResponse, error) {
 	var response ReportResponse
 	err := b.doJSON(ctx, reportPath, request, &response, maxReportResponse)
-	return response, err
+	return response, backendError(err)
+}
+
+func backendError(err error) error {
+	if err == nil {
+		return nil
+	}
+	result := &BackendError{Retryable: !errors.Is(err, ErrInvalidResponse), Err: err}
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		result.Retryable = apiErr.Status == 0 || apiErr.Status == 429 || apiErr.Status >= 500
+		result.Disabled = apiErr.Code == "disabled"
+		if apiErr.RetryAfterSeconds != nil {
+			retryAfter := time.Duration(*apiErr.RetryAfterSeconds) * time.Second
+			result.RetryAfter = &retryAfter
+		}
+	}
+	return result
 }
 
 func (b *HTTPBackend) doJSON(ctx context.Context, path string, request, response interface{}, maxResponse int64) error {

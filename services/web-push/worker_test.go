@@ -294,8 +294,8 @@ func TestWorkerHonorsBackendRetryAfterOnTransportBackoff(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	retryAfter := 30
-	api := &fakeAPI{claimErr: &APIError{Status: 429, RetryAfterSeconds: &retryAfter}}
+	retryAfter := 30 * time.Second
+	api := &fakeAPI{claimErr: &BackendError{Retryable: true, RetryAfter: &retryAfter}}
 	var delay time.Duration
 	ctx, cancel := context.WithCancel(context.Background())
 	worker := NewWorker(WorkerConfig{
@@ -353,10 +353,10 @@ func TestWorkerRetriesReportWithBoundedDelays(t *testing.T) {
 
 func TestWorkerHonorsReportRetryAfter(t *testing.T) {
 	key := testVAPIDKey(t)
-	retryAfter := 3
+	retryAfter := 3 * time.Second
 	api := &fakeAPI{
 		claim:      ClaimResponse{Version: 1, ServerTime: time.Now().UTC().Format(time.RFC3339), PollAfterSeconds: 5, Deliveries: []Delivery{testDelivery()}},
-		reportErrs: []error{&APIError{Status: 429, Code: "rate_limited", RetryAfterSeconds: &retryAfter}},
+		reportErrs: []error{&BackendError{Retryable: true, RetryAfter: &retryAfter}},
 	}
 	sender := &fakeSender{result: ProviderResult{Status: 201}}
 	var delays []time.Duration

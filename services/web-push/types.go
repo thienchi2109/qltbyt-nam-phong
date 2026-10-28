@@ -70,6 +70,25 @@ type ProviderResult struct {
 	Outcome           string
 }
 
+// BackendError carries backend retry policy without transport-specific details.
+type BackendError struct {
+	Retryable  bool
+	Disabled   bool
+	RetryAfter *time.Duration
+	Err        error
+}
+
+func (e *BackendError) Error() string {
+	if e.Err != nil {
+		return e.Err.Error()
+	}
+	return "web push backend error"
+}
+
+func (e *BackendError) Unwrap() error { return e.Err }
+
+// Backend claims deliveries and reports attempts. Implementations use BackendError
+// for explicit retry policy; unknown errors remain retryable.
 type Backend interface {
 	Claim(context.Context, ClaimRequest) (ClaimResponse, error)
 	Report(context.Context, ReportRequest) (ReportResponse, error)

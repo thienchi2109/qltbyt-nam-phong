@@ -137,12 +137,9 @@ func (w *Worker) Run(ctx context.Context) error {
 			delay = time.Minute
 		} else {
 			delay = w.transportBackoff(backoffAttempt)
-			var apiErr *APIError
-			if errors.As(err, &apiErr) && apiErr.RetryAfterSeconds != nil {
-				retryAfter := time.Duration(*apiErr.RetryAfterSeconds) * time.Second
-				if retryAfter > delay {
-					delay = retryAfter
-				}
+			var backendErr *BackendError
+			if errors.As(err, &backendErr) && backendErr.RetryAfter != nil {
+				delay = max(delay, *backendErr.RetryAfter)
 			}
 			backoffAttempt++
 		}
@@ -383,12 +380,9 @@ func (w *Worker) reportWithRetry(ctx context.Context, request ReportRequest, lea
 			return err
 		}
 		delay := time.Duration(1<<attempt) * time.Second
-		var apiErr *APIError
-		if errors.As(err, &apiErr) && apiErr.RetryAfterSeconds != nil {
-			retryAfter := time.Duration(*apiErr.RetryAfterSeconds) * time.Second
-			if retryAfter > delay {
-				delay = retryAfter
-			}
+		var backendErr *BackendError
+		if errors.As(err, &backendErr) && backendErr.RetryAfter != nil {
+			delay = max(delay, *backendErr.RetryAfter)
 		}
 		if !lease.IsZero() && lease.Sub(now().UTC()) <= delay {
 			return err
