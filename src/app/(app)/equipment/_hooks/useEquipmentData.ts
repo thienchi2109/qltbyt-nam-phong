@@ -76,6 +76,8 @@ export interface UseEquipmentDataReturn {
   // Active usage logs
   activeUsageLogs: ReturnType<typeof useActiveUsageLogs>["data"]
   isLoadingActiveUsage: boolean
+  activeUsageError: unknown
+  refetchActiveUsage: () => unknown
 
   // Cache invalidation
   invalidateEquipmentForCurrentTenant: (datasets?: EquipmentDataset | EquipmentDataset[]) => void
@@ -147,10 +149,14 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   })
 
   // Active usage logs
-  const { data: activeUsageLogs, isLoading: isLoadingActiveUsage } = useActiveUsageLogs({
+  const {
+    data: activeUsageLogs,
+    isPending: isLoadingActiveUsage,
+    error: activeUsageError,
+    refetch: refetchActiveUsage,
+  } = useActiveUsageLogs({
     tenantId: currentTenantId,
     enabled: true,
-    refetchInterval: 5 * 60 * 1000,
     equipmentDataset,
   })
 
@@ -353,6 +359,8 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       isTenantsLoading,
       activeUsageLogs,
       isLoadingActiveUsage,
+      activeUsageError,
+      refetchActiveUsage,
       invalidateEquipmentForCurrentTenant,
     }),
     [
@@ -379,6 +387,8 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       isTenantsLoading,
       activeUsageLogs,
       isLoadingActiveUsage,
+      activeUsageError,
+      refetchActiveUsage,
       invalidateEquipmentForCurrentTenant,
     ]
   )

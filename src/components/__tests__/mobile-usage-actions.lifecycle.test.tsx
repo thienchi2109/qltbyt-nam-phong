@@ -1,9 +1,16 @@
 import * as React from "react"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-const mocks = vi.hoisted(() => ({ logs: vi.fn(), session: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  logs: vi.fn(),
+  session: vi.fn(),
+  query: vi.fn(),
+  refetch: vi.fn(),
+}))
 vi.mock("next-auth/react", () => ({ useSession: () => mocks.session() }))
-vi.mock("@/hooks/use-usage-logs", () => ({ useActiveUsageLogs: () => ({ data: mocks.logs() }) }))
+vi.mock("@/hooks/use-usage-logs", () => ({
+  useActiveUsageLogs: (options: unknown) => ({ data: mocks.logs(), ...mocks.query(options) }),
+}))
 vi.mock("../start-usage-dialog", () => ({
   StartUsageDialog: ({ open }: { open: boolean }) => (open ? <div>Phiên mới</div> : null),
 }))
@@ -30,6 +37,7 @@ describe("mobile lifecycle usage", () => {
     vi.clearAllMocks()
     mocks.session.mockReturnValue({ data: { user: { id: 7, role: "to_qltb" } } })
     mocks.logs.mockReturnValue([])
+    mocks.query.mockReturnValue({ isPending: false, isError: false, refetch: mocks.refetch })
   })
   it("disables start entry without removing an existing session close path", () => {
     const view = render(<MobileUsageActions equipment={equipment} {...{ startDisabled: true }} />)
@@ -55,5 +63,41 @@ describe("mobile lifecycle usage", () => {
     mocks.session.mockReturnValue({ data: { user: { id: 7, role: "regional_leader" } } })
     render(<MobileUsageActions equipment={equipment} {...{ startDisabled: false }} />)
     expect(screen.getByRole("button", { name: "Bắt đầu sử dụng thiết bị" })).toBeDisabled()
+  })
+  it.each(["loading", "error"])(
+    "blocks unknown availability on %s and offers error retry",
+    (state) => {
+      mocks.query.mockReturnValue({
+        isPending: state === "loading",
+        isError: state === "error",
+        refetch: mocks.refetch,
+      })
+      render(<MobileUsageActions equipment={equipment} />)
+      expect(screen.getByRole("button", { name: "Bắt đầu sử dụng thiết bị" })).toBeDisabled()
+      if (state === "error") {
+        fireEvent.click(screen.getByRole("button", { name: "Thử lại" }))
+        expect(mocks.refetch).toHaveBeenCalledOnce()
+      } else expect(screen.getByText("Đang tải trạng thái sử dụng…")).toBeInTheDocument()
+    }
+  )
+  it("shows exact busy badge, denies owner start, preserves end after a refresh error", () => {
+    mocks.logs.mockReturnValue([
+      {
+        id: 1,
+        thiet_bi_id: 99,
+        trang_thai: "dang_su_dung",
+        nguoi_su_dung_id: 7,
+        thoi_gian_bat_dau: "2026-10-28T00:00:00Z",
+      },
+    ])
+    mocks.query.mockReturnValue({ isError: true, refetch: mocks.refetch })
+    render(<MobileUsageActions equipment={equipment} />)
+    expect(screen.getByText("Đang sử dụng", { selector: "span" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Bắt đầu sử dụng thiết bị" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Kết thúc sử dụng" })).toBeEnabled()
+  })
+  it("scopes placed equipment to its tenant and dataset", () => {
+    render(<MobileUsageActions equipment={{ ...equipment, don_vi: 2, nguon_kinh_phi: "Mượn" }} />)
+    expect(mocks.query).toHaveBeenCalledWith({ tenantId: 2, equipmentDataset: "placed" })
   })
 })

@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { useToast } from "@/hooks/use-toast"
 import { createEquipmentColumns } from "@/components/equipment/equipment-table-columns"
-import { EquipmentActionsMenu } from "@/components/equipment/equipment-actions-menu"
+import { useEquipmentRowActions } from "./_hooks/useEquipmentRowActions"
 import { isEquipmentManagerRole } from "@/lib/rbac"
 
 // Import extracted hooks
@@ -122,18 +122,12 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     pagination,
   })
 
-  // Render actions helper (needed for columns)
-  // EquipmentActionsMenu now consumes dialog actions from context directly
-  const renderActions = React.useCallback(
-    (equipment: Equipment) => (
-      <EquipmentActionsMenu
-        equipment={equipment}
-        activeUsageLogs={data.activeUsageLogs}
-        isLoadingActiveUsage={data.isLoadingActiveUsage}
-      />
-    ),
-    [data.activeUsageLogs, data.isLoadingActiveUsage]
-  )
+  const renderActions = useEquipmentRowActions({
+    activeUsageLogs: data.activeUsageLogs,
+    isLoadingActiveUsage: data.isLoadingActiveUsage,
+    activeUsageError: data.activeUsageError,
+    onRetryActiveUsage: data.refetchActiveUsage,
+  })
 
   const canBulkSelect = React.useMemo(
     () => isEquipmentManagerRole(auth.user?.role),

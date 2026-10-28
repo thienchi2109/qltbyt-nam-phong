@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import * as React from "react"
 import "@testing-library/jest-dom"
-import type { Equipment } from "@/types/database"
+import type { Equipment, UsageLog } from "@/types/database"
 
 const state = vi.hoisted(() => ({
   role: "user",
@@ -167,5 +167,64 @@ describe("EquipmentActionsMenu delete action", () => {
     await waitFor(() => expect(mocks.openDetailDialog).toHaveBeenCalledTimes(1))
     expect(callbackMenuState).toEqual([false])
     expect(document.body.style.pointerEvents).not.toBe("none")
+  })
+
+  it("shows the busy badge outside the menu and disables start for its owner", async () => {
+    const user = userEvent.setup()
+    render(
+      <EquipmentActionsMenu
+        equipment={{ id: 101 } as Equipment}
+        activeUsageLogs={[
+          { id: 1, thiet_bi_id: 101, nguoi_su_dung_id: 1, trang_thai: "dang_su_dung" } as UsageLog,
+        ]}
+        isLoadingActiveUsage={false}
+      />
+    )
+    expect(screen.getByText("Đang sử dụng")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+    expect(screen.getByRole("menuitem", { name: "Viết nhật ký SD" })).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    )
+    expect(screen.getByRole("menuitem", { name: "Kết thúc sử dụng" })).not.toHaveAttribute(
+      "aria-disabled"
+    )
+  })
+
+  it("fails closed on error and retries through the existing query", async () => {
+    const user = userEvent.setup(),
+      retry = vi.fn()
+    render(
+      <EquipmentActionsMenu
+        equipment={{ id: 101 } as Equipment}
+        activeUsageLogs={[]}
+        isLoadingActiveUsage={false}
+        activeUsageError={new Error("offline")}
+        onRetryActiveUsage={retry}
+      />
+    )
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+    expect(screen.getByRole("menuitem", { name: "Viết nhật ký SD" })).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    )
+    await user.click(screen.getByRole("menuitem", { name: "Thử lại" }))
+    expect(retry).toHaveBeenCalledOnce()
+  })
+
+  it("fails closed when no scoped response is available", async () => {
+    const user = userEvent.setup()
+    render(
+      <EquipmentActionsMenu
+        equipment={{ id: 101 } as Equipment}
+        activeUsageLogs={undefined}
+        isLoadingActiveUsage={false}
+      />
+    )
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+    expect(screen.getByRole("menuitem", { name: "Viết nhật ký SD" })).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    )
   })
 })

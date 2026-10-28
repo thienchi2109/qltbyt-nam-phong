@@ -15,6 +15,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +33,8 @@ export interface EquipmentActionsMenuProps {
   equipment: Equipment
   activeUsageLogs: UsageLog[] | undefined
   isLoadingActiveUsage: boolean
+  activeUsageError?: unknown
+  onRetryActiveUsage?: () => unknown
 }
 
 /** Renders the desktop equipment actions menu with status-aware commands. */
@@ -39,6 +42,8 @@ export function EquipmentActionsMenu({
   equipment,
   activeUsageLogs,
   isLoadingActiveUsage,
+  activeUsageError,
+  onRetryActiveUsage,
 }: EquipmentActionsMenuProps) {
   const { push } = useRouter()
   const {
@@ -66,7 +71,13 @@ export function EquipmentActionsMenu({
 
   const isCurrentUserUsing =
     !!activeUsageLog && userId != null && activeUsageLog.nguoi_su_dung_id === userId
-  const startUsageDisabled = isLoadingActiveUsage || !user || !!activeUsageLog || isRegionalLeader
+  const startUsageDisabled =
+    isLoadingActiveUsage ||
+    !!activeUsageError ||
+    !activeUsageLogs ||
+    !user ||
+    !!activeUsageLog ||
+    isRegionalLeader
 
   const handleShowDetails = React.useCallback(() => {
     deferDropdownAction(() => openDetailDialog(equipment))
@@ -93,30 +104,42 @@ export function EquipmentActionsMenu({
   }, [push, equipment.id, isGlobal, isRegionalLeader])
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="size-8 p-0 touch-target-sm md:size-8"
-          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-        >
-          <span className="sr-only">Open menu</span>
-          <MoreHorizontal className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-        <DropdownMenuItem onSelect={handleShowDetails}>Xem chi tiết</DropdownMenuItem>
-        {equipment.temperature_monitoring_enabled && (
-          <DropdownMenuItem
-            onSelect={() =>
-              deferDropdownAction(() => push(`/temperature-monitoring?equipment=${equipment.id}`))
-            }
+    <div className="flex items-center justify-end gap-2">
+      {activeUsageLog && <Badge variant="secondary">Đang sử dụng</Badge>}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="size-8 p-0 touch-target-sm md:size-8"
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
-            Sổ nhiệt độ
-          </DropdownMenuItem>
-        )}
-        {!isCurrentUserUsing && (
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontal className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuLabel>Hành động</DropdownMenuLabel>
+          {isLoadingActiveUsage && (
+            <DropdownMenuLabel>Đang tải trạng thái sử dụng…</DropdownMenuLabel>
+          )}
+          {!!activeUsageError && (
+            <>
+              <DropdownMenuLabel>Không thể tải trạng thái sử dụng.</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => void onRetryActiveUsage?.()}>
+                Thử lại
+              </DropdownMenuItem>
+            </>
+          )}
+          <DropdownMenuItem onSelect={handleShowDetails}>Xem chi tiết</DropdownMenuItem>
+          {equipment.temperature_monitoring_enabled && (
+            <DropdownMenuItem
+              onSelect={() =>
+                deferDropdownAction(() => push(`/temperature-monitoring?equipment=${equipment.id}`))
+              }
+            >
+              Sổ nhiệt độ
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             disabled={startUsageDisabled}
             onSelect={handleStartUsage}
@@ -124,24 +147,24 @@ export function EquipmentActionsMenu({
           >
             Viết nhật ký SD
           </DropdownMenuItem>
-        )}
-        {isCurrentUserUsing && (
-          <DropdownMenuItem onSelect={handleEndUsage}>Kết thúc sử dụng</DropdownMenuItem>
-        )}
-        {!isGlobal && !isRegionalLeader && (
-          <DropdownMenuItem onSelect={handleCreateRepairRequest}>
-            Tạo yêu cầu sửa chữa
-          </DropdownMenuItem>
-        )}
-        {canDeleteEquipment && (
-          <DropdownMenuItem
-            onSelect={handleDeleteEquipment}
-            className="text-destructive focus:text-destructive"
-          >
-            Xóa Thiết bị
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {isCurrentUserUsing && (
+            <DropdownMenuItem onSelect={handleEndUsage}>Kết thúc sử dụng</DropdownMenuItem>
+          )}
+          {!isGlobal && !isRegionalLeader && (
+            <DropdownMenuItem onSelect={handleCreateRepairRequest}>
+              Tạo yêu cầu sửa chữa
+            </DropdownMenuItem>
+          )}
+          {canDeleteEquipment && (
+            <DropdownMenuItem
+              onSelect={handleDeleteEquipment}
+              className="text-destructive focus:text-destructive"
+            >
+              Xóa Thiết bị
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }

@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   useSession: vi.fn(),
   mutateAsync: vi.fn(),
   useStartUsageSession: vi.fn(),
+  useActiveUsageLogs: vi.fn(),
+  refetch: vi.fn(),
   useToast: vi.fn(),
 }))
 
@@ -16,6 +18,7 @@ vi.mock("next-auth/react", () => ({
 
 vi.mock("@/hooks/use-usage-logs", () => ({
   useStartUsageSession: () => mocks.useStartUsageSession(),
+  useActiveUsageLogs: (options: unknown) => mocks.useActiveUsageLogs(options),
 }))
 
 vi.mock("@/hooks/use-toast", () => ({
@@ -57,6 +60,12 @@ describe("StartUsageDialog validation", () => {
       isPending: false,
     })
     mocks.useToast.mockReturnValue({ toast: vi.fn() })
+    mocks.useActiveUsageLogs.mockReturnValue({
+      data: [],
+      isPending: false,
+      isError: false,
+      refetch: mocks.refetch,
+    })
   })
 
   it("blocks submit when the initial status is empty", async () => {
@@ -114,6 +123,81 @@ describe("StartUsageDialog validation", () => {
       })
       expect(onSuccess).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it.each([7, 8])(
+    "disables an already-open form when polling reports owner %s is using equipment",
+    async (owner) => {
+      const props = {
+        open: true,
+        onOpenChange: vi.fn(),
+        equipment: {
+          id: 99,
+          ten_thiet_bi: "Monitor",
+          ma_thiet_bi: "TB-99",
+          tinh_trang_hien_tai: "Tốt",
+          don_vi: 2,
+          nguon_kinh_phi: "Mượn",
+        },
+      }
+      const view = render(<StartUsageDialog {...props} />)
+      expect(screen.getByRole("button", { name: "Bắt đầu sử dụng" })).toBeEnabled()
+      mocks.useActiveUsageLogs.mockReturnValue({
+        data: [{ id: 1, thiet_bi_id: 99, nguoi_su_dung_id: owner, trang_thai: "dang_su_dung" }],
+        isPending: false,
+        isError: false,
+        refetch: mocks.refetch,
+      })
+      view.rerender(<StartUsageDialog {...props} />)
+      expect(screen.getByRole("button", { name: "Bắt đầu sử dụng" })).toBeDisabled()
+      expect(screen.getByText("Thiết bị đang được sử dụng.")).toBeInTheDocument()
+      fireEvent.submit(screen.getByRole("button", { name: "Bắt đầu sử dụng" }).closest("form")!)
+      await waitFor(() => expect(mocks.mutateAsync).not.toHaveBeenCalled())
+      expect(mocks.useActiveUsageLogs).toHaveBeenLastCalledWith({
+        enabled: true,
+        tenantId: 2,
+        equipmentDataset: "placed",
+      })
+    }
+  )
+
+  it.each(["loading", "error"])("keeps submit disabled while availability is %s", (state) => {
+    mocks.useActiveUsageLogs.mockReturnValue({
+      data: state === "error" ? [] : undefined,
+      isPending: state === "loading",
+      isError: state === "error",
+      refetch: mocks.refetch,
+    })
+    render(
+      <StartUsageDialog
+        open
+        onOpenChange={vi.fn()}
+        equipment={{
+          id: 99,
+          ten_thiet_bi: "Monitor",
+          ma_thiet_bi: "TB-99",
+          tinh_trang_hien_tai: "Tốt",
+        }}
+      />
+    )
+    expect(screen.getByRole("button", { name: "Bắt đầu sử dụng" })).toBeDisabled()
+    if (state === "error") {
+      fireEvent.click(screen.getByRole("button", { name: "Thử lại trạng thái sử dụng" }))
+      expect(mocks.refetch).toHaveBeenCalledOnce()
+    } else expect(screen.getByText("Đang tải trạng thái sử dụng…")).toBeInTheDocument()
+  })
+
+  it("only enables the availability observer while an equipment dialog is open", () => {
+    const { rerender } = render(
+      <StartUsageDialog open={false} onOpenChange={vi.fn()} equipment={null} />
+    )
+    expect(mocks.useActiveUsageLogs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false })
+    )
+    rerender(<StartUsageDialog open onOpenChange={vi.fn()} equipment={null} />)
+    expect(mocks.useActiveUsageLogs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false })
+    )
   })
 })
 

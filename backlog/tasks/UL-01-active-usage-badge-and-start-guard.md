@@ -1,6 +1,6 @@
 # UL-01 — Badge Đang sử dụng và khóa Bắt đầu sử dụng thiết bị
 
-- Status: To Do
+- Status: In Progress — implemented and verified locally; browser smoke pending
 - Created: 2026-10-28
 - Milestone: Equipment / Usage log
 - Dependencies: None
@@ -18,7 +18,8 @@ Máy vừa thao tác cập nhật ngay sau khi server xác nhận; máy khác c�
 polling tiếp theo khi trang đang hoạt động và kết nối bình thường. Refetch khi
 quay lại tab hoặc kết nối mạng được khôi phục.
 
-Task này ghi nhận yêu cầu triển khai; chưa bắt đầu sửa code hoặc thao tác DB.
+Đã triển khai code và kiểm chứng tự động cục bộ ngày 2026-10-28, gồm concurrency
+trên PostgreSQL fixture dùng một lần; chưa thao tác live/Oracle DB.
 
 ## Hiện trạng từ khảo sát read-only
 
@@ -41,30 +42,75 @@ Task này ghi nhận yêu cầu triển khai; chưa bắt đầu sửa code ho�
 
 ## Acceptance criteria
 
-- [ ] Badge có đúng nhãn **Đang sử dụng**, xuất hiện rõ ràng trên desktop và
+- [x] Badge có đúng nhãn **Đang sử dụng**, xuất hiện rõ ràng trên desktop và
       mobile khi thiết bị có phiên active; badge và nút cùng dùng dữ liệu query.
-- [ ] Khi active, Bắt đầu bị disable cho mọi nhân viên, kể cả owner. Giữ nguyên
+- [x] Khi active, Bắt đầu bị disable cho mọi nhân viên, kể cả owner. Giữ nguyên
       phân quyền/scope và khả năng Kết thúc hiện có; không mở rộng quyền.
-- [ ] Start/end dùng trạng thái pending hiện có để ngăn thao tác lặp. Chỉ sau
+- [x] Start/end dùng trạng thái pending hiện có để ngăn thao tác lặp. Chỉ sau
       server success mới chuyển trạng thái tương ứng; end thất bại không làm
       mất badge hoặc mở lại Bắt đầu.
-- [ ] Dùng lại TanStack Query hook, query keys và batch RPC hiện có; polling
+- [x] Dùng lại TanStack Query hook, query keys và batch RPC hiện có; polling
       mỗi 5 giây khi trang đang hoạt động. Không tạo request riêng cho từng
       hàng thiết bị, không thêm Realtime hoặc dependency mới.
-- [ ] Sau start/end thành công, cập nhật cache và invalidate/refetch các query
+- [x] Sau start/end thành công, cập nhật cache và invalidate/refetch các query
       liên quan để UI trên máy thao tác phản ánh ngay kết quả server. Máy khác
       phản ánh thay đổi ở chu kỳ polling tiếp theo trong điều kiện bình thường.
-- [ ] Refetch khi quay lại tab hoặc mạng được khôi phục; cache và các cập nhật
+- [x] Refetch khi quay lại tab hoặc mạng được khôi phục; cache và các cập nhật
       luôn tách theo tenant/dataset, không dùng dữ liệu scope trước để mở nút.
-- [ ] Khi chưa xác định được trạng thái hoặc query lỗi, không coi thiết bị là
+- [x] Khi chưa xác định được trạng thái hoặc query lỗi, không coi thiết bị là
       rảnh: khóa Bắt đầu, thể hiện loading/lỗi và cho phép thử lại theo mẫu có
       sẵn. Refetch lỗi không xóa trạng thái active đã biết.
-- [ ] Active query xử lý đầy đủ dữ liệu trong scope, kể cả hơn 200 phiên;
+- [x] Active query xử lý đầy đủ dữ liệu trong scope, kể cả hơn 200 phiên;
       không suy luận thiết bị rảnh từ một trang kết quả bị cắt. Ưu tiên tái sử
       dụng pagination/RPC hiện có và giữ cách lấy dữ liệu theo batch.
 - [ ] Giữ guard server khi hai nhân viên Bắt đầu gần đồng thời. Client bị từ
       chối phải hiển thị lỗi dễ hiểu và refetch trạng thái; không chỉ dựa vào
       nút disable để bảo vệ phiên sử dụng.
+
+## Bằng chứng triển khai cục bộ — 2026-10-28
+
+- Branch `feat/usage-log-ul-01`, base `78e2602dd5489c3da31bab5844f6b3f58c5a9a0f`.
+- RED: hook tests bắt được danh sách dừng ở 200/201, payload lỗi bị coi là rảnh,
+  thiếu refresh sau competing-start, pending kết thúc sớm và client B không poll
+  sau 5 giây. Desktop RED 3 lỗi; mobile RED 4 lỗi về badge, unknown/error và scope.
+- GREEN: 126 tests / 14 files, gồm hai QueryClient độc lập với fake timers:
+  client A start/end → B đổi ở poll 5 giây; ngừng poll khi hidden; focus/reconnect
+  refetch. Đây là kiểm chứng tự động cục bộ với RPC mocks, không phải hai browser.
+- Format, `verify:no-explicit-any`, `verify:dedupe`, typecheck: PASS. React Doctor
+  staged diff scan 13 TS/TSX files: 91/100, hai complexity warnings tại
+  `EquipmentActionsMenu` và `StartUsageDialog`; không lỗi.
+- Parent chạy lại độc lập toàn bộ chuỗi gates theo đúng thứ tự: PASS,
+  126 tests / 14 files. Review cuối của parent và reviewer độc lập không còn
+  finding cần sửa. Graph worktree chưa sẵn sàng; xác minh callers bằng source,
+  tìm kiếm trực tiếp và focused tests, không suy ra an toàn từ graph rỗng.
+- Reuse: dùng lại batch hook, scoped keys, Badge/Button, `isPlacedEquipment`,
+  pending của start/end dialogs. Mutation chờ invalidate/refetch để cache phản ánh
+  server, không chèn response thiếu scope vào cache tenant/dataset khác.
+- Correction từ scout: mobile trước đây luôn query dataset mặc định `regular`;
+  nay dùng `equipment.don_vi` và helper phân loại `nguon_kinh_phi`. Caller truyền
+  full Equipment; các hàng cùng scope dùng chung query, không RPC theo từng hàng.
+- Correction từ review: dialog start đã mở cũng quan sát cùng batch query khi
+  `open && equipment`, giữ tenant/dataset từ equipment (mobile truyền tiếp hai
+  fields). RED 5 lỗi xác nhận dialog vẫn cho submit khi active/unknown/error;
+  GREEN bảo vệ owner/người khác đang dùng, query đổi trong lúc form mở, chặn cả
+  native submit và cho retry lỗi; giữ guard catalog và pending hiện hữu.
+- Pagination sử dụng SETOF response và offset hiện có, tải đến trang dưới 200
+  hàng; từng trang truyền đủ 9 arguments. Chỉ publish snapshot đầy đủ; lỗi trang
+  sau/payload sai giữ snapshot cũ và khóa start qua error state.
+- Test integration cũ thiếu QueryClient khi catalog hook được thêm trước đây;
+  baseline main tái hiện `No QueryClient set`. Fixture nay mock catalog nhất quán
+  với các query/mutation đã mock sẵn; giữ nguyên assertions start/end/history.
+- Parent kiểm chứng concurrency: **PASS — DISPOSABLE ONLY**, PostgreSQL 17.11
+  trong container dùng một lần, không mở cổng mạng. Áp dụng nguyên SQL start RPC
+  hiện hữu lên fixture bốn bảng tối thiểu và helper JWT/tenant giả lập; không có
+  unique constraint cho phiên active. Quan sát client B chờ row lock khi client A
+  chưa commit; sau A commit, B bị từ chối với `P0001`, chỉ còn một phiên active
+  thuộc A. Container đã xóa sau kiểm chứng.
+- SHA-256 của migration start đã kiểm chứng:
+  `9ffe5e4f511721fa97e311cbb3d89007372267f554e864cd2173902e09dc638d`.
+  Kết quả fixture không chứng nhận full restored baseline, RLS, HTTP hoặc live.
+- **INCOMPLETE:** smoke hai browser sessions chưa chạy. Không live/Oracle write,
+  không SQL migration; task giữ In Progress cho đến khi có bằng chứng smoke.
 
 ## Kiểm chứng khi triển khai
 

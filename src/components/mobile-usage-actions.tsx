@@ -22,6 +22,7 @@ import { useHydrationSafeNow } from "@/components/time/HydrationSafeRelativeTime
 import type { SessionUser } from "@/types/database"
 import { StartUsageDialog } from "./start-usage-dialog"
 import { EndUsageDialog } from "./end-usage-dialog"
+import { isPlacedEquipment } from "@/app/(app)/equipment/_hooks/equipmentDataset"
 
 interface EquipmentSlim {
   id: number
@@ -29,6 +30,8 @@ interface EquipmentSlim {
   ma_thiet_bi: string
   tinh_trang_hien_tai?: string | null
   khoa_phong_quan_ly?: string | null
+  don_vi?: number | null
+  nguon_kinh_phi?: string | null
 }
 
 interface MobileUsageActionsProps {
@@ -51,7 +54,15 @@ export function MobileUsageActions({
     const n = typeof uid === "string" ? Number(uid) : uid
     return Number.isFinite(n) ? (n as number) : null
   }, [user?.id])
-  const { data: activeUsageLogs } = useActiveUsageLogs()
+  const {
+    data: activeUsageLogs,
+    isPending,
+    isError,
+    refetch,
+  } = useActiveUsageLogs({
+    tenantId: equipment.don_vi,
+    equipmentDataset: isPlacedEquipment(equipment.nguon_kinh_phi) ? "placed" : "regular",
+  })
   const [isStartDialogOpen, setIsStartDialogOpen] = React.useState(false)
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)
   const [isSheetOpen, setIsSheetOpen] = React.useState(false)
@@ -66,8 +77,8 @@ export function MobileUsageActions({
   const isCurrentUserUsing =
     !!activeSession && userId != null && activeSession.nguoi_su_dung_id === userId
 
-  // Check if equipment is in use by someone else
-  const isInUseByOther = activeSession && !isCurrentUserUsing
+  const cannotStart =
+    isRegionalLeader || startDisabled || isPending || isError || !activeUsageLogs || !!activeSession
 
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
@@ -84,7 +95,7 @@ export function MobileUsageActions({
       : 0
 
   const handleStartUsage = () => {
-    if (isRegionalLeader || startDisabled) return
+    if (cannotStart) return
     setIsSheetOpen(false)
     setIsStartDialogOpen(true)
   }
@@ -113,7 +124,9 @@ export function MobileUsageActions({
             {activeSession ? (
               <>
                 <div className="size-2 bg-white rounded-full animate-pulse" />
-                Đang sử dụng
+                <Badge variant="secondary" asChild>
+                  <span>Đang sử dụng</span>
+                </Badge>
               </>
             ) : (
               <>
@@ -133,13 +146,22 @@ export function MobileUsageActions({
           </SheetHeader>
 
           <div className="mt-6 space-y-4">
+            {isPending && <p role="status">Đang tải trạng thái sử dụng…</p>}
+            {isError && (
+              <div role="alert">
+                Không thể tải trạng thái sử dụng.
+                <Button variant="link" onClick={() => void refetch()}>
+                  Thử lại
+                </Button>
+              </div>
+            )}
             {activeSession ? (
               <div className="space-y-4">
                 {/* Active Session Info */}
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="size-3 bg-green-500 rounded-full animate-pulse" />
-                    <span className="font-medium text-green-800">Đang được sử dụng</span>
+                    <span className="font-medium text-green-800">Thiết bị đang được sử dụng</span>
                   </div>
 
                   <div className="space-y-2 text-sm">
@@ -168,6 +190,9 @@ export function MobileUsageActions({
 
                 {/* Action Buttons */}
                 <div className="space-y-2">
+                  <Button className="w-full" disabled>
+                    Bắt đầu sử dụng thiết bị
+                  </Button>
                   {isCurrentUserUsing ? (
                     <Button
                       onClick={handleEndUsage}
@@ -213,7 +238,7 @@ export function MobileUsageActions({
                   onClick={handleStartUsage}
                   className="w-full gap-2"
                   size="lg"
-                  disabled={isRegionalLeader || startDisabled}
+                  disabled={cannotStart}
                 >
                   <Play className="size-5" />
                   Bắt đầu sử dụng thiết bị
@@ -233,6 +258,8 @@ export function MobileUsageActions({
           ten_thiet_bi: equipment.ten_thiet_bi,
           ma_thiet_bi: equipment.ma_thiet_bi,
           tinh_trang_hien_tai: equipment.tinh_trang_hien_tai ?? undefined,
+          don_vi: equipment.don_vi,
+          nguon_kinh_phi: equipment.nguon_kinh_phi,
         }}
       />
 

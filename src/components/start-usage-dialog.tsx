@@ -26,7 +26,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useSession } from "next-auth/react"
-import { useStartUsageSession } from "@/hooks/use-usage-logs"
+import { useActiveUsageLogs, useStartUsageSession } from "@/hooks/use-usage-logs"
 import { useEquipmentStatusCatalog } from "@/hooks/use-equipment-status-catalog"
 import { useToast } from "@/hooks/use-toast"
 import type { Equipment as DbEquipment, SessionUser } from "@/types/database"
@@ -34,6 +34,7 @@ import { isRegionalLeaderRole } from "@/lib/rbac"
 import { formatVietnamDateTime } from "@/lib/date-utils"
 import { useHydrationSafeNow } from "@/components/time/HydrationSafeRelativeTime"
 import { getEquipmentStatusMetadata } from "@/lib/equipment-status"
+import { isPlacedEquipment } from "@/app/(app)/equipment/_hooks/equipmentDataset"
 
 const startUsageSchema = z.object({
   tinh_trang_ban_dau: z.string().trim().min(1, "Vui lòng nhập tình trạng ban đầu"),
@@ -44,6 +45,8 @@ type StartUsageFormData = z.infer<typeof startUsageSchema>
 
 type EquipmentForStart = Pick<DbEquipment, "id" | "ten_thiet_bi" | "ma_thiet_bi"> & {
   tinh_trang_hien_tai?: string | null
+  don_vi?: number | null
+  nguon_kinh_phi?: string | null
 }
 
 interface StartUsageDialogProps {
@@ -76,6 +79,12 @@ export function StartUsageDialog({
     return null
   }, [user?.id])
   const startUsageMutation = useStartUsageSession()
+  const activeUsage = useActiveUsageLogs({
+    enabled: open && !!equipment,
+    tenantId: equipment?.don_vi,
+    equipmentDataset: isPlacedEquipment(equipment?.nguon_kinh_phi) ? "placed" : "regular",
+  })
+  const isInUse = activeUsage.data?.some((log) => log.thiet_bi_id === equipment?.id)
   const {
     activeValues,
     canWrite,
@@ -85,6 +94,11 @@ export function StartUsageDialog({
     fetchStatus,
   } = useEquipmentStatusCatalog()
   const canStart =
+    !!equipment &&
+    !!activeUsage.data &&
+    !activeUsage.isPending &&
+    !activeUsage.isError &&
+    !isInUse &&
     isSuccess &&
     fetchStatus === "idle" &&
     !!statusCatalog &&
@@ -170,6 +184,17 @@ export function StartUsageDialog({
                 <p className="text-sm">{formatVietnamDateTime(now)}</p>
               </div>
             </div>
+
+            {activeUsage.isPending && <p role="status">Đang tải trạng thái sử dụng…</p>}
+            {isInUse && <p role="status">Thiết bị đang được sử dụng.</p>}
+            {activeUsage.isError && (
+              <div role="alert">
+                Không thể tải trạng thái sử dụng.
+                <Button type="button" variant="link" onClick={() => void activeUsage.refetch()}>
+                  Thử lại trạng thái sử dụng
+                </Button>
+              </div>
+            )}
 
             {/* Equipment Status */}
             <FormField

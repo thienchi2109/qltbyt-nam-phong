@@ -16,6 +16,7 @@ vi.mock("@/hooks/use-equipment-status-catalog", () => ({
   useEquipmentStatusCatalog: () => mocks.catalog(),
 }))
 vi.mock("@/hooks/use-usage-logs", () => ({
+  useActiveUsageLogs: () => ({ data: [], isPending: false, isError: false, refetch: vi.fn() }),
   useStartUsageSession: () => ({ mutateAsync: mocks.start, isPending: false }),
   useEndUsageSession: () => ({ mutateAsync: mocks.end, isPending: false }),
 }))

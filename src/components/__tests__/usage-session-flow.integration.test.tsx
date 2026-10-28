@@ -57,7 +57,24 @@ vi.mock("@/hooks/use-mobile", () => ({
   useIsMobile: () => mocks.useIsMobile(),
 }))
 
+vi.mock("@/hooks/use-equipment-status-catalog", () => ({
+  useEquipmentStatusCatalog: () => ({
+    activeValues: ["Sẵn sàng"],
+    canWrite: true,
+    isSuccess: true,
+    fetchStatus: "idle",
+    data: [],
+    refetch: vi.fn(),
+  }),
+}))
+
 vi.mock("@/hooks/use-usage-logs", () => ({
+  useActiveUsageLogs: () => ({
+    data: usageLogsState,
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
   useEquipmentUsageLogs: (...args: unknown[]) => mocks.useEquipmentUsageLogs(...args),
   useEquipmentUsageLogsMore: (...args: unknown[]) => mocks.useEquipmentUsageLogsMore(...args),
   useDeleteUsageLog: () => mocks.useDeleteUsageLog(),
@@ -148,65 +165,70 @@ describe("usage session flow integration", () => {
     })
 
     mocks.useStartUsageSession.mockReturnValue({
-      mutateAsync: vi.fn(async (payload: {
-        thiet_bi_id: number
-        nguoi_su_dung_id: number
-        tinh_trang_thiet_bi?: string
-        tinh_trang_ban_dau?: string
-        ghi_chu?: string
-      }) => {
-        usageLogsState = [
-          {
-            id: 1,
-            thiet_bi_id: payload.thiet_bi_id,
-            nguoi_su_dung_id: payload.nguoi_su_dung_id,
-            thoi_gian_bat_dau: "2026-04-15T05:00:00Z",
-            trang_thai: "dang_su_dung",
-            created_at: "2026-04-15T05:00:00Z",
-            updated_at: "2026-04-15T05:00:00Z",
-            tinh_trang_thiet_bi: payload.tinh_trang_thiet_bi ?? null,
-            tinh_trang_ban_dau: payload.tinh_trang_ban_dau ?? null,
-            tinh_trang_ket_thuc: null,
-            ghi_chu: payload.ghi_chu ?? "",
-            nguoi_su_dung: { full_name: "Nguyễn Văn A" },
-            thiet_bi: {
-              id: equipment.id,
-              ten_thiet_bi: equipment.ten_thiet_bi,
-              ma_thiet_bi: equipment.ma_thiet_bi,
+      mutateAsync: vi.fn(
+        async (payload: {
+          thiet_bi_id: number
+          nguoi_su_dung_id: number
+          tinh_trang_thiet_bi?: string
+          tinh_trang_ban_dau?: string
+          ghi_chu?: string
+        }) => {
+          usageLogsState = [
+            {
+              id: 1,
+              thiet_bi_id: payload.thiet_bi_id,
+              nguoi_su_dung_id: payload.nguoi_su_dung_id,
+              thoi_gian_bat_dau: "2026-04-15T05:00:00Z",
+              trang_thai: "dang_su_dung",
+              created_at: "2026-04-15T05:00:00Z",
+              updated_at: "2026-04-15T05:00:00Z",
+              tinh_trang_thiet_bi: payload.tinh_trang_thiet_bi ?? null,
+              tinh_trang_ban_dau: payload.tinh_trang_ban_dau ?? null,
+              tinh_trang_ket_thuc: null,
+              ghi_chu: payload.ghi_chu ?? "",
+              nguoi_su_dung: { full_name: "Nguyễn Văn A" },
+              thiet_bi: {
+                id: equipment.id,
+                ten_thiet_bi: equipment.ten_thiet_bi,
+                ma_thiet_bi: equipment.ma_thiet_bi,
+              },
             },
-          },
-        ]
-        notifyStoreChange?.()
+          ]
+          notifyStoreChange?.()
 
-        return usageLogsState[0]
-      }),
+          return usageLogsState[0]
+        }
+      ),
       isPending: false,
     })
 
     mocks.useEndUsageSession.mockReturnValue({
-      mutateAsync: vi.fn(async (payload: {
-        id: number
-        tinh_trang_thiet_bi?: string
-        tinh_trang_ket_thuc?: string
-        ghi_chu?: string
-      }) => {
-        usageLogsState = usageLogsState.map((log) =>
-          log.id === payload.id
-            ? {
-                ...log,
-                thoi_gian_ket_thuc: "2026-04-15T06:30:00Z",
-                trang_thai: "hoan_thanh",
-                updated_at: "2026-04-15T06:30:00Z",
-                tinh_trang_thiet_bi: payload.tinh_trang_thiet_bi ?? log.tinh_trang_thiet_bi ?? null,
-                tinh_trang_ket_thuc: payload.tinh_trang_ket_thuc ?? null,
-                ghi_chu: payload.ghi_chu ?? log.ghi_chu ?? "",
-              }
-            : log
-        )
-        notifyStoreChange?.()
+      mutateAsync: vi.fn(
+        async (payload: {
+          id: number
+          tinh_trang_thiet_bi?: string
+          tinh_trang_ket_thuc?: string
+          ghi_chu?: string
+        }) => {
+          usageLogsState = usageLogsState.map((log) =>
+            log.id === payload.id
+              ? {
+                  ...log,
+                  thoi_gian_ket_thuc: "2026-04-15T06:30:00Z",
+                  trang_thai: "hoan_thanh",
+                  updated_at: "2026-04-15T06:30:00Z",
+                  tinh_trang_thiet_bi:
+                    payload.tinh_trang_thiet_bi ?? log.tinh_trang_thiet_bi ?? null,
+                  tinh_trang_ket_thuc: payload.tinh_trang_ket_thuc ?? null,
+                  ghi_chu: payload.ghi_chu ?? log.ghi_chu ?? "",
+                }
+              : log
+          )
+          notifyStoreChange?.()
 
-        return usageLogsState[0]
-      }),
+          return usageLogsState[0]
+        }
+      ),
       isPending: false,
     })
   })

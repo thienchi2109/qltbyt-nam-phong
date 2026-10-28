@@ -154,7 +154,7 @@ export function useActiveUsageLogs(
   const {
     tenantId,
     enabled = true,
-    refetchInterval, // Allow caller to specify polling interval
+    refetchInterval = 5_000,
     equipmentDataset = "regular",
   } = options
 
@@ -163,27 +163,43 @@ export function useActiveUsageLogs(
   return useQuery({
     queryKey: usageLogKeys.active(tenantKey, equipmentDataset),
     queryFn: async () => {
-      const data = await callRpc<UsageLog[]>({
-        fn: "usage_log_list",
-        args: {
-          p_thiet_bi_id: null,
-          p_trang_thai: null,
-          p_active_only: true,
-          p_started_from: null,
-          p_started_to: null,
-          p_limit: 200,
-          p_offset: 0,
-          p_don_vi: tenantId ?? null, // Filter by tenant if specified
-          p_equipment_dataset: equipmentDataset,
-        },
-      })
-
-      return data ?? []
+      const logs: UsageLog[] = []
+      for (let offset = 0; ; offset += 200) {
+        const data = await callRpc<UsageLog[]>({
+          fn: "usage_log_list",
+          args: {
+            p_thiet_bi_id: null,
+            p_trang_thai: null,
+            p_active_only: true,
+            p_started_from: null,
+            p_started_to: null,
+            p_limit: 200,
+            p_offset: offset,
+            p_don_vi: tenantId ?? null, // Filter by tenant if specified
+            p_equipment_dataset: equipmentDataset,
+          },
+        })
+        if (
+          !Array.isArray(data) ||
+          data.some(
+            (log) =>
+              !log ||
+              !Number.isFinite(log.id) ||
+              !Number.isFinite(log.thiet_bi_id) ||
+              log.trang_thai !== "dang_su_dung"
+          )
+        )
+          throw new Error("Không thể xác định trạng thái sử dụng thiết bị.")
+        logs.push(...data)
+        if (data.length < 200) return logs
+      }
     },
     enabled,
-    staleTime: 30 * 1000, // Increased to 30 seconds (active sessions don't change that frequently)
-    refetchInterval: refetchInterval || 2 * 60 * 1000, // Default to 2 minutes instead of 10 seconds
+    staleTime: 0,
+    refetchInterval,
     refetchIntervalInBackground: false, // Don't poll when tab is not active
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   })
 }
 
@@ -213,24 +229,27 @@ export function useStartUsageSession() {
 
       return result
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ["usage-logs", "active"] }) // invalidate all tenants
-      queryClient.invalidateQueries({
-        queryKey: ["usage-logs", "equipment", data.thiet_bi_id.toString()],
-      }) // invalidate all option variants for this equipment
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["usage-logs", "active"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["usage-logs", "equipment", data.thiet_bi_id.toString()],
+        }),
+      ]) // refetch server-confirmed state without writing into unrelated scopes
 
       toast({
         title: "Thành công",
         description: "Đã bắt đầu phiên sử dụng thiết bị.",
       })
     },
-    onError: (error: unknown) => {
+    onError: async (error: unknown) => {
       toast({
         variant: "destructive",
         title: "Lỗi",
         description: normalizeRpcError(error, "Không thể bắt đầu phiên sử dụng."),
       })
+      await queryClient.invalidateQueries({ queryKey: ["usage-logs", "active"] })
     },
   })
 }
@@ -259,12 +278,14 @@ export function useEndUsageSession() {
 
       return result
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ["usage-logs", "active"] }) // invalidate all tenants
-      queryClient.invalidateQueries({
-        queryKey: ["usage-logs", "equipment", data.thiet_bi_id.toString()],
-      }) // invalidate all option variants for this equipment
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["usage-logs", "active"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["usage-logs", "equipment", data.thiet_bi_id.toString()],
+        }),
+      ])
 
       toast({
         title: "Thành công",
