@@ -24,6 +24,22 @@ func TestAppConfigDefaultsToPaused(t *testing.T) {
 	if cfg.healthAddress != defaultHealthAddress {
 		t.Fatalf("health address = %q, want %q", cfg.healthAddress, defaultHealthAddress)
 	}
+	if cfg.appID != "qltbyt" || cfg.workerID != "oracle-web-push-1" || cfg.vapidVersion != values["WEB_PUSH_VAPID_KEY_VERSION"] || cfg.vapidPublicKey != values["WEB_PUSH_VAPID_PUBLIC_KEY"] || cfg.vapidFingerprint != values["WEB_PUSH_VAPID_FINGERPRINT"] {
+		t.Fatal("legacy configuration changed identity, worker or VAPID artifact")
+	}
+}
+
+func TestAppConfigUsesOperatorIdentityAcrossCredentialRotation(t *testing.T) {
+	values := map[string]string{"WEB_PUSH_APP_ID": "another-app", "WEB_PUSH_HMAC_KEY_ID": "old-slot"}
+	before, err := loadConfig(valuesGet(values))
+	if err != nil {
+		t.Fatal(err)
+	}
+	values["WEB_PUSH_HMAC_KEY_ID"] = "new-slot"
+	after, err := loadConfig(valuesGet(values))
+	if err != nil || before.appID != "another-app" || after.appID != before.appID || after.hmacKeyID != "new-slot" {
+		t.Fatal("credential rotation changed trusted operator app identity")
+	}
 }
 
 func TestAppConfigInvalidPauseFailsClosed(t *testing.T) {
@@ -37,6 +53,16 @@ func TestAppConfigInvalidPauseFailsClosed(t *testing.T) {
 	cfg, err := loadConfig(valuesGet(values))
 	if err == nil || !cfg.paused {
 		t.Fatalf("loadConfig() = %+v, %v; want paused error", cfg, err)
+	}
+}
+
+func TestAppConfigRejectsInvalidAppIdentity(t *testing.T) {
+	for _, appID := range []string{"tenant/42", "APP", "qltbyt\nsecond", strings.Repeat("a", 65)} {
+		t.Run(appID, func(t *testing.T) {
+			if _, err := loadConfig(valuesGet(map[string]string{"WEB_PUSH_APP_ID": appID})); err == nil {
+				t.Fatal("loadConfig accepted an invalid operator app identity")
+			}
+		})
 	}
 }
 

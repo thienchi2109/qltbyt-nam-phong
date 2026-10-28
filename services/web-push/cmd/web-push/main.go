@@ -18,6 +18,7 @@ import (
 const defaultHealthAddress = "127.0.0.1:8080"
 
 type appConfig struct {
+	appID            string
 	origin           string
 	workerID         string
 	vapidVersion     string
@@ -41,44 +42,35 @@ func main() {
 		writeStartupError(os.Stderr, "vapid_artifact_missing", nil)
 		os.Exit(1)
 	}
-	if cfg.vapidSubject == "" {
+	if strings.TrimSpace(cfg.vapidSubject) == "" {
 		writeStartupError(os.Stderr, "vapid_subject_missing", nil)
 		os.Exit(1)
 	}
 
-	vapid, err := webpush.LoadVAPIDKey(cfg.vapidPath, cfg.vapidVersion, cfg.vapidPublicKey, cfg.vapidFingerprint)
+	bindings, err := webpush.NewAppBindings([]webpush.AppConfig{{
+		ID: cfg.appID, Origin: cfg.origin, WorkerID: cfg.workerID,
+		HMACKeyID: cfg.hmacKeyID, HMACSecret: cfg.hmacSecret,
+		VAPIDVersion: cfg.vapidVersion, VAPIDPublicKey: cfg.vapidPublicKey,
+		VAPIDFingerprint: cfg.vapidFingerprint, VAPIDPath: cfg.vapidPath,
+		VAPIDSubject: cfg.vapidSubject, Paused: cfg.paused,
+	}}, nil)
 	if err != nil {
-		writeStartupError(os.Stderr, vapidErrorCode(err), err)
-		os.Exit(1)
-	}
-	backend, err := webpush.NewHTTPBackend(cfg.origin, cfg.hmacKeyID, cfg.hmacSecret, nil)
-	if err != nil {
-		writeStartupError(os.Stderr, "backend_configuration_invalid", err)
+		code := "backend_configuration_invalid"
+		if errors.Is(err, webpush.ErrVAPIDMismatch) || errors.Is(err, webpush.ErrVAPIDNotReady) {
+			code = vapidErrorCode(err)
+		}
+		writeStartupError(os.Stderr, code, err)
 		os.Exit(1)
 	}
 
-	metrics := webpush.NewMetrics()
-	health := webpush.NewHealthState(cfg.paused, metrics)
+	binding := bindings[0]
 	server := &http.Server{
 		Addr:              cfg.healthAddress,
-		Handler:           health.Handler(),
+		Handler:           binding.Health.Handler(),
 		ReadHeaderTimeout: 2 * time.Second,
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-
-	worker := webpush.NewWorker(webpush.WorkerConfig{
-		API:                 backend,
-		Sender:              webpush.WebPushSender{Subject: cfg.vapidSubject},
-		VAPID:               vapid,
-		WorkerID:            cfg.workerID,
-		ExpectedVersion:     cfg.vapidVersion,
-		ExpectedPublicKey:   cfg.vapidPublicKey,
-		ExpectedFingerprint: cfg.vapidFingerprint,
-		Paused:              cfg.paused,
-		Metrics:             metrics,
-		OnReady:             health.SetReady,
-	})
 
 	healthErr := make(chan error, 1)
 	go func() {
@@ -87,7 +79,7 @@ func main() {
 		}
 	}()
 	workerErr := make(chan error, 1)
-	go func() { workerErr <- worker.Run(ctx) }()
+	go func() { workerErr <- binding.Worker.Run(ctx) }()
 
 	exitCode := 0
 	workerDone := false
@@ -128,6 +120,7 @@ func loadConfig(get func(string) string) (appConfig, error) {
 	}
 	paused, err := webpush.ParsePause(get("WEB_PUSH_PAUSED"))
 	cfg := appConfig{
+		appID:            getenvFrom(get, "WEB_PUSH_APP_ID", "qltbyt"),
 		origin:           get("WEB_PUSH_ORIGIN"),
 		workerID:         getenvFrom(get, "WEB_PUSH_WORKER_ID", "oracle-web-push-1"),
 		vapidVersion:     get("WEB_PUSH_VAPID_KEY_VERSION"),
@@ -141,6 +134,9 @@ func loadConfig(get func(string) string) (appConfig, error) {
 		paused:           paused,
 	}
 	if err != nil {
+		return cfg, err
+	}
+	if err := webpush.ValidateAppID(cfg.appID); err != nil {
 		return cfg, err
 	}
 	if err := webpush.ValidateHealthAddress(cfg.healthAddress); err != nil {

@@ -11,6 +11,7 @@ services:
       - no-new-privileges:true
     stop_grace_period: 10s
     environment:
+      WEB_PUSH_APP_ID: "${WEB_PUSH_APP_ID:-qltbyt}"
       WEB_PUSH_ORIGIN: "${WEB_PUSH_ORIGIN:?set WEB_PUSH_ORIGIN}"
       WEB_PUSH_WORKER_ID: "${WEB_PUSH_WORKER_ID:-oracle-web-push-1}"
       WEB_PUSH_PAUSED: "${WEB_PUSH_PAUSED:-true}"
