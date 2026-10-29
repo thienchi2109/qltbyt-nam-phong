@@ -77,7 +77,8 @@ mới/report commit -> candidate env compatibility smoke. Source subscriptions
 không đổi, B chỉ hoàn tất sau sửa credential, A không mất backlog khi stop.
 5 container IDs lần lượt `5a96f2709d59`, `14b8afa2172a`, `ca1a9e9a1684`,
 `1392a7d1f5c0`, `bc5b852e39ed`; exit0, stop91–104ms, cleanup toàn bộ containers
-và temporary secret files. Chỉ hai task image giữ tạm cho independent rerun.
+và temporary secret files. Ở lần chạy development, hai task image được giữ tạm
+cho independent rerun.
 Rehearsal log local `/tmp/wp08-rehearsal-green.log`, không chứa secret.
 
 Both standalone Compose `config --quiet` PASS với placeholder env. Real image
@@ -88,10 +89,42 @@ Fixture chỉ kiểm tra HMAC signature, chưa nonce/time-window server thật.
 Rollback chứng minh synthetic subscription state và outbox xử lý tiếp; không
 đụng consent browser và không tự nhận đã kiểm chứng consent/device thật.
 
+## Independent verification trên artifact từ commit sạch
+
+Điều phối viên đã chạy lại full Go tests, race, vet, cả hai Compose
+`config --quiet`, Prettier và whitespace: PASS. Reviewer mới
+`post_implementation_reviewer`: **Standards PASS, Spec PASS**, không có finding.
+
+Sau commit implementation `15eaecdccb152ad6c4f301493d6da4a9a8951ecb`, xác nhận
+worktree sạch và build lại với `SOURCE_REVISION` đúng SHA đó. Candidate cuối:
+
+- Local image ID
+  `sha256:aafa993d230ac7df3e532a79f7abaa1718961dc9df5c70464343506b159d8489`.
+- OCI revision `15eaecdccb152ad6c4f301493d6da4a9a8951ecb`; linux/amd64,
+  7,509,019 bytes, UID/GID `65532:65532`, entrypoint Go, SIGTERM.
+- `RepoDigests` rỗng: chưa publish và không gọi local image ID là registry digest.
+
+Ngày `2026-10-29T07:21:18Z`, điều phối viên dùng chính image ID này và
+prior-source image ID đã ghi ở trên chạy lại
+`go test -race -run '^TestPackagingImageHandoff$' -count=1 -v .`: **PASS**,
+test 1.45s, toàn lệnh exit 0. Cả năm bước prior → candidate auth failure →
+candidate credential recovery/delivery-report → prior rollback/reclaim →
+candidate env smoke đều chạy thật. Container IDs lần lượt `869261e0f64a`,
+`28d3a377c340`, `a51ecbe6dd9e`, `56e3d62664f5`, `56d0a3586e36`: exit 0,
+stop 89–105ms, không OOM/SIGKILL; không còn container label
+`qltbyt.wp08=rehearsal`. Temporary secrets được test cleanup xóa.
+
+Test sources tại commit trên khớp file đã chạy, SHA-256:
+
+- `packaging_test.go`: `00ceaa005ee7ce4257366661cc312462b40cff2355c85b771f9ecb4be9d32997`.
+- `second_app_source_test.go`: `d4ad42f22527988d0b6d1500983cc8d3adad148dfca490d34547f295eba91673`.
+
+Evidence commit sau chỉ cập nhật tài liệu; image vẫn gắn với commit
+implementation nêu trên, không được relabel thành artifact build từ commit khác.
+
 ## Phạm vi còn pending ngay trong WP-08
 
-Exact landed-commit artifact cần build/rerun sau review/commit. STAGING/LIVE,
-inventory consumer thực tế, source backlog/lease metrics thật, browser/device
+STAGING/LIVE, inventory consumer thực tế, source backlog/lease metrics thật, browser/device
 smoke và cutover/rollback deployed **chưa làm/chưa được phép**. Không mở task
 follow-up để bỏ scope; WP-08 giữ In Progress đến khi rollout được chỉ định và
 thực hiện. Không có production credential/cron/VAPID/DB write hay deploy.
