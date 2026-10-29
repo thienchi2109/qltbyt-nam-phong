@@ -1,6 +1,6 @@
 # WP-05 — Runtime điều phối nhiều app và cô lập lỗi
 
-- Status: Done — local gates và hai trục review PASS; chưa merge/push
+- Status: Done — local gates và hai trục review PASS; đã merge main local, chưa push
 - Created: 2026-10-28
 - Milestone: Shared Web Push / Hexagonal
 - Dependencies: WP-03, WP-04
@@ -34,7 +34,8 @@ còn lại hoàn tất delivery; chạy `go test -race ./...` ở module Web Pus
 
 ## Implementation và bằng chứng local (2026-10-29)
 
-- Branch `refactor/web-push-wp-05`, base `d827d03b`; commit local, chưa push/merge.
+- Commit `3a9ef09a`, base `d827d03b`; đã merge main local, chưa push.
+  Branch `refactor/web-push-wp-05` vẫn được giữ lại.
 - `WEB_PUSH_APPS_CONFIG_PATH` đọc JSON tin cậy 1–16 app, tối đa 1 MiB; default
   pause, strict field/type/duplicate/trailing checks, không fallback/merge env.
   Env cũ giữ nguyên mặc định và health/metrics một app.
@@ -66,7 +67,7 @@ còn lại hoàn tất delivery; chạy `go test -race ./...` ở module Web Pus
   findings; tự chạy focused runtime/config/cancellation tests: PASS.
 
 Chi tiết operator: [Cấu hình app](../../ops/web-push/app-configuration.vi.md).
-Chưa merge/push/deploy, smoke provider/browser/staging/live hoặc app thứ hai thật;
+Chưa push/deploy, smoke provider/browser/staging/live hoặc app thứ hai thật;
 app fixture không thay thế WP-06. Chưa có process-level SIGTERM/port-collision
 integration test; cancellation/join và loopback address được kiểm chứng ở Go
 tests. Không sửa TS/SQL/dependency/VAPID live.

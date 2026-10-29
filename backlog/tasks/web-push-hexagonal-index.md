@@ -1,6 +1,6 @@
 # Web Push dùng chung — Hexagonal Backlog
 
-- Status: In Progress — WP-01–WP-05 Done local; WP-06–WP-08 To Do
+- Status: In Progress — WP-01–WP-05 merged local; WP-06 Done local; WP-07–WP-08 To Do
 - Created: 2026-10-28
 - Milestone: Shared Web Push / Hexagonal
 - Survey baseline: `af8002880066d04a47b3de8db4d1d3310d65d6a1`
@@ -27,9 +27,17 @@ vào main local. WP-04 hoàn tất trusted app binding, config/auth/isolation te
 full/race/vet và hai review độc lập PASS tại `d827d03b`, đã merge vào main local
 và xóa branch. Chưa push hoặc rollout các thay đổi này.
 WP-05 đã triển khai runtime nhiều app, bounded capacity, readiness/metrics và
-strict JSON config trên branch `refactor/web-push-wp-05`; local Go full/race/vet
-PASS. Điều phối viên review/verify và reviewer mới `gpt-6.1-sol/xhigh` review
-độc lập đều PASS, không có actionable findings; commit local, chưa push/merge/deploy.
+strict JSON config; local Go full/race/vet PASS. Điều phối viên review/verify
+và reviewer mới `gpt-6.1-sol/xhigh` review độc lập đều PASS, không có actionable
+findings; đã merge vào `main` local tại `3a9ef09a`, chưa push/deploy. Branch
+`refactor/web-push-wp-05` vẫn được giữ lại.
+WP-06 đã thêm hai source HTTP v1 có state độc lập, chạy production runtime
+với local IDs trùng nhau; retry/idempotency/eligibility/revocation/crash fencing
+có fixture tests. Local Go focused/full/race/vet, gofmt, touched Markdown
+Prettier và diff whitespace PASS; điều phối viên review/verify và reviewer
+độc lập spec/quality đều PASS. Commit local trên `refactor/web-push-wp-06`,
+chưa push/merge; proof chỉ là fixture, chưa app/browser thật.
+Evidence chỉ FIXTURE / DISPOSABLE ONLY; app/browser thật và rollout chưa làm.
 
 ## Quyết định định hướng
 
@@ -55,8 +63,8 @@ PASS. Điều phối viên review/verify và reviewer mới `gpt-6.1-sol/xhigh` 
 | [WP-02](WP-02-delivery-core-pilot.md)              | Pilot tách delivery core             | WP-01        | Core dùng port hiện có, giữ hành vi một app           |
 | [WP-03](WP-03-qltbyt-backend-adapter.md)           | Adapter QLTBYT                       | WP-02        | Done local; DTO v1 tách khỏi core, review PASS        |
 | [WP-04](WP-04-app-identity-and-configuration.md)   | Định danh và cấu hình theo app       | WP-02        | Done local; config/auth/isolation và review PASS      |
-| [WP-05](WP-05-multi-app-runtime.md)                | Runtime nhiều app                    | WP-03, WP-04 | Done local; runtime/config/isolation và review PASS   |
-| [WP-06](WP-06-second-app-integration-proof.md)     | Chứng minh tích hợp app thứ hai      | WP-05        | Adapter/fixture độc lập chạy cùng QLTBYT              |
+| [WP-05](WP-05-multi-app-runtime.md)                | Runtime nhiều app                    | WP-03, WP-04 | Merged main local `3a9ef09a`; review PASS             |
+| [WP-06](WP-06-second-app-integration-proof.md)     | Chứng minh tích hợp app thứ hai      | WP-05        | Done local; stateful fixture, gates và review PASS    |
 | [WP-07](WP-07-qltbyt-compatibility-and-cutover.md) | Kiểm chứng tương thích và chuyển đổi | WP-06        | Bằng chứng lifecycle, quyền và không mất subscription |
 | [WP-08](WP-08-packaging-rollout-and-rollback.md)   | Đóng gói, runbook và rollout         | WP-07        | Artifact review được; rollout/rollback theo phê duyệt |
 
