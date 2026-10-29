@@ -33,27 +33,23 @@ type appConfig struct {
 }
 
 func main() {
-	cfg, err := loadConfig(os.Getenv)
+	configs, healthAddress, multi, err := loadRuntimeConfig(os.Getenv)
 	if err != nil {
 		writeStartupError(os.Stderr, "configuration_invalid", err)
 		os.Exit(1)
 	}
-	if cfg.vapidVersion == "" || cfg.vapidPublicKey == "" || cfg.vapidFingerprint == "" {
-		writeStartupError(os.Stderr, "vapid_artifact_missing", nil)
-		os.Exit(1)
+	if !multi {
+		cfg := configs[0]
+		if cfg.VAPIDVersion == "" || cfg.VAPIDPublicKey == "" || cfg.VAPIDFingerprint == "" {
+			writeStartupError(os.Stderr, "vapid_artifact_missing", nil)
+			os.Exit(1)
+		}
+		if strings.TrimSpace(cfg.VAPIDSubject) == "" {
+			writeStartupError(os.Stderr, "vapid_subject_missing", nil)
+			os.Exit(1)
+		}
 	}
-	if strings.TrimSpace(cfg.vapidSubject) == "" {
-		writeStartupError(os.Stderr, "vapid_subject_missing", nil)
-		os.Exit(1)
-	}
-
-	bindings, err := webpush.NewAppBindings([]webpush.AppConfig{{
-		ID: cfg.appID, Origin: cfg.origin, WorkerID: cfg.workerID,
-		HMACKeyID: cfg.hmacKeyID, HMACSecret: cfg.hmacSecret,
-		VAPIDVersion: cfg.vapidVersion, VAPIDPublicKey: cfg.vapidPublicKey,
-		VAPIDFingerprint: cfg.vapidFingerprint, VAPIDPath: cfg.vapidPath,
-		VAPIDSubject: cfg.vapidSubject, Paused: cfg.paused,
-	}}, nil)
+	bindings, err := webpush.NewAppBindings(configs, nil)
 	if err != nil {
 		code := "backend_configuration_invalid"
 		if errors.Is(err, webpush.ErrVAPIDMismatch) || errors.Is(err, webpush.ErrVAPIDNotReady) {
@@ -63,10 +59,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	binding := bindings[0]
+	runtime, err := webpush.NewRuntime(bindings)
+	if err != nil {
+		writeStartupError(os.Stderr, "runtime_configuration_invalid", err)
+		os.Exit(1)
+	}
+	handler := runtime.Handler()
+	if !multi {
+		handler = bindings[0].Health.Handler()
+	}
 	server := &http.Server{
-		Addr:              cfg.healthAddress,
-		Handler:           binding.Health.Handler(),
+		Addr:              healthAddress,
+		Handler:           handler,
 		ReadHeaderTimeout: 2 * time.Second,
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -79,7 +83,13 @@ func main() {
 		}
 	}()
 	workerErr := make(chan error, 1)
-	go func() { workerErr <- binding.Worker.Run(ctx) }()
+	go func() {
+		if multi {
+			workerErr <- runtime.Run(ctx)
+		} else {
+			workerErr <- bindings[0].Worker.Run(ctx)
+		}
+	}()
 
 	exitCode := 0
 	workerDone := false
@@ -97,16 +107,19 @@ func main() {
 	case <-ctx.Done():
 	}
 
+	stop()
+	for _, binding := range bindings {
+		binding.Health.SetReady(false)
+	}
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	_ = server.Shutdown(shutdownCtx)
 	cancel()
-	if ctx.Err() == nil {
-		stop()
-	}
 	if !workerDone {
 		select {
 		case <-workerErr:
 		case <-time.After(5 * time.Second):
+			writeStartupError(os.Stderr, "worker_shutdown_timeout", nil)
+			exitCode = 1
 		}
 	}
 	if exitCode != 0 {

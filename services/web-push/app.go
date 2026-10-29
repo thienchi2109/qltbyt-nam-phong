@@ -16,17 +16,17 @@ var appIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
 // AppConfig is trusted operator configuration, never request or delivery data.
 // ID survives credential rotation; WorkerID and VAPIDVersion are local to the app.
 type AppConfig struct {
-	ID               string
-	Origin           string
-	WorkerID         string
-	HMACKeyID        string
-	HMACSecret       string
-	VAPIDVersion     string
-	VAPIDPublicKey   string
-	VAPIDFingerprint string
-	VAPIDPath        string
-	VAPIDSubject     string
-	Paused           bool
+	ID               string `json:"id"`
+	Origin           string `json:"origin"`
+	WorkerID         string `json:"worker_id"`
+	HMACKeyID        string `json:"hmac_key_id"`
+	HMACSecret       string `json:"hmac_secret"`
+	VAPIDVersion     string `json:"vapid_version"`
+	VAPIDPublicKey   string `json:"vapid_public_key"`
+	VAPIDFingerprint string `json:"vapid_fingerprint"`
+	VAPIDPath        string `json:"vapid_path"`
+	VAPIDSubject     string `json:"vapid_subject"`
+	Paused           bool   `json:"paused"`
 }
 
 // AppBinding owns the worker, backend, key and health state for one app.
@@ -47,8 +47,8 @@ func ValidateAppID(id string) error {
 // NewAppBindings validates the entire set before returning any usable binding.
 // This composes workers only; multi-app scheduling belongs to the runtime.
 func NewAppBindings(configs []AppConfig, client *http.Client) ([]AppBinding, error) {
-	if len(configs) == 0 {
-		return nil, errors.New("app configuration is missing")
+	if len(configs) == 0 || len(configs) > MaxRuntimeApps {
+		return nil, errors.New("app configuration must contain 1 to 16 apps")
 	}
 	bindings := make([]AppBinding, 0, len(configs))
 	for _, cfg := range configs {

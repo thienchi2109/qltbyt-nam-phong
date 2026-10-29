@@ -2,6 +2,7 @@ package webpush
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -87,17 +88,31 @@ func (m *Metrics) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	s := m.snapshot()
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
-	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_accepted_total counter\nweb_push_deliveries_accepted_total %d\n", s.accepted)
-	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_failed_total counter\nweb_push_deliveries_failed_total %d\n", s.failed)
-	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_retried_total counter\nweb_push_deliveries_retried_total %d\n", s.retried)
-	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_retryable_total counter\nweb_push_deliveries_retryable_total %d\n", s.retryable)
-	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_backend_owned_total counter\nweb_push_deliveries_backend_owned_total %d\n", s.backendOwned)
-	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_cancelled_total counter\nweb_push_deliveries_cancelled_total %d\n", s.cancelled)
-	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_expired_total counter\nweb_push_deliveries_expired_total %d\n", s.expired)
-	_, _ = fmt.Fprintf(w, "# TYPE web_push_send_latency_seconds summary\nweb_push_send_latency_seconds_count %d\nweb_push_send_latency_seconds_sum %.6f\n", s.latencyCount, s.latencySeconds)
+	m.write(w, "", true)
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
 	}
+}
+
+func (m *Metrics) write(w io.Writer, labels string, types bool) {
+	s := m.snapshot()
+	for _, metric := range []struct {
+		name  string
+		value uint64
+	}{
+		{"accepted", s.accepted}, {"failed", s.failed}, {"retried", s.retried},
+		{"retryable", s.retryable}, {"backend_owned", s.backendOwned},
+		{"cancelled", s.cancelled}, {"expired", s.expired},
+	} {
+		name := "web_push_deliveries_" + metric.name + "_total"
+		if types {
+			_, _ = fmt.Fprintf(w, "# TYPE %s counter\n", name)
+		}
+		_, _ = fmt.Fprintf(w, "%s%s %d\n", name, labels, metric.value)
+	}
+	if types {
+		_, _ = fmt.Fprint(w, "# TYPE web_push_send_latency_seconds summary\n")
+	}
+	_, _ = fmt.Fprintf(w, "web_push_send_latency_seconds_count%s %d\nweb_push_send_latency_seconds_sum%s %.6f\n", labels, s.latencyCount, labels, s.latencySeconds)
 }

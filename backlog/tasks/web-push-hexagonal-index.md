@@ -1,6 +1,6 @@
 # Web Push dùng chung — Hexagonal Backlog
 
-- Status: In Progress — WP-01–WP-04 Done; WP-05–WP-08 To Do
+- Status: In Progress — WP-01–WP-05 Done local; WP-06–WP-08 To Do
 - Created: 2026-10-28
 - Milestone: Shared Web Push / Hexagonal
 - Survey baseline: `af8002880066d04a47b3de8db4d1d3310d65d6a1`
@@ -24,8 +24,12 @@ WP-02 hoàn tất pilot backend error boundary tại Go service, giữ nguyên w
 focused/full/race, vet và review độc lập PASS. WP-03 đã tách DTO v1 khỏi core;
 local contract/full/race/vet và hai review độc lập PASS tại `0747ee38`, đã merge
 vào main local. WP-04 hoàn tất trusted app binding, config/auth/isolation tests,
-full/race/vet và hai review độc lập PASS trên branch `refactor/web-push-wp-04`;
-chưa merge. Chưa push hoặc rollout các thay đổi này.
+full/race/vet và hai review độc lập PASS tại `d827d03b`, đã merge vào main local
+và xóa branch. Chưa push hoặc rollout các thay đổi này.
+WP-05 đã triển khai runtime nhiều app, bounded capacity, readiness/metrics và
+strict JSON config trên branch `refactor/web-push-wp-05`; local Go full/race/vet
+PASS. Điều phối viên review/verify và reviewer mới `gpt-6.1-sol/xhigh` review
+độc lập đều PASS, không có actionable findings; commit local, chưa push/merge/deploy.
 
 ## Quyết định định hướng
 
@@ -51,7 +55,7 @@ chưa merge. Chưa push hoặc rollout các thay đổi này.
 | [WP-02](WP-02-delivery-core-pilot.md)              | Pilot tách delivery core             | WP-01        | Core dùng port hiện có, giữ hành vi một app           |
 | [WP-03](WP-03-qltbyt-backend-adapter.md)           | Adapter QLTBYT                       | WP-02        | Done local; DTO v1 tách khỏi core, review PASS        |
 | [WP-04](WP-04-app-identity-and-configuration.md)   | Định danh và cấu hình theo app       | WP-02        | Done local; config/auth/isolation và review PASS      |
-| [WP-05](WP-05-multi-app-runtime.md)                | Runtime nhiều app                    | WP-03, WP-04 | Điều phối, giới hạn tải và cô lập lỗi theo app        |
+| [WP-05](WP-05-multi-app-runtime.md)                | Runtime nhiều app                    | WP-03, WP-04 | Done local; runtime/config/isolation và review PASS   |
 | [WP-06](WP-06-second-app-integration-proof.md)     | Chứng minh tích hợp app thứ hai      | WP-05        | Adapter/fixture độc lập chạy cùng QLTBYT              |
 | [WP-07](WP-07-qltbyt-compatibility-and-cutover.md) | Kiểm chứng tương thích và chuyển đổi | WP-06        | Bằng chứng lifecycle, quyền và không mất subscription |
 | [WP-08](WP-08-packaging-rollout-and-rollback.md)   | Đóng gói, runbook và rollout         | WP-07        | Artifact review được; rollout/rollback theo phê duyệt |

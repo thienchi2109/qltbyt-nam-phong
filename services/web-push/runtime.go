@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 // ParsePause treats an omitted value as paused and rejects ambiguous input.
@@ -40,6 +41,8 @@ type HealthState struct {
 	mu      sync.RWMutex
 	ready   bool
 	paused  bool
+	updated time.Time
+	stopped bool
 	metrics *Metrics
 }
 
@@ -54,7 +57,34 @@ func NewHealthState(paused bool, metrics *Metrics) *HealthState {
 func (s *HealthState) SetReady(ready bool) {
 	s.mu.Lock()
 	s.ready = ready
+	s.updated = time.Now()
 	s.mu.Unlock()
+}
+
+// status is for required multi-app readiness; legacy paused readiness is retained.
+func (s *HealthState) status(now time.Time) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.stopped {
+		return "stopped"
+	}
+	if !s.ready {
+		return "not_ready"
+	}
+	if s.paused {
+		return "paused"
+	}
+	if now.Sub(s.updated) > time.Minute {
+		return "stale"
+	}
+	return "ready"
+}
+
+func (s *HealthState) markStopped() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.ready = false
+	s.stopped = true
 }
 
 func (s *HealthState) SetPaused(paused bool) {
