@@ -1,11 +1,13 @@
 # Runbook Web Push cho Oracle
 
-Tài liệu này mô tả quy trình tương lai cho notification service trên Oracle. Không chạy các lệnh trong tài liệu này trong Phase 6.4; chưa có provisioning, live write, provider thật hoặc production deploy.
+Tài liệu này mô tả rotation key riêng với code rollout. Mọi thao tác production
+vẫn cần approval cụ thể; packaging/health/handoff hiện hành theo
+[runbook WP-08](packaging-rollout-rollback.vi.md), chưa rollout STAGING/LIVE.
 
 ## Nguyên tắc triển khai
 
 - Build từ `services/web-push/Dockerfile`, gắn tag `qltbyt-web-push:<git-sha>` rồi publish và deploy bằng image digest. Không đưa key, `.env` hoặc file secret vào build context; `.dockerignore` đã loại các dạng file đó.
-- Container chạy binary `/usr/local/bin/web-push` bằng UID/GID `65532`, filesystem chỉ đọc, không publish port ra host. Health server mặc định bind `127.0.0.1:8080`; chỉ dùng kênh loopback hoặc đường nội bộ được kiểm soát để probe.
+- Container chạy binary `/usr/local/bin/web-push` bằng UID/GID `65532`, filesystem chỉ đọc. Compose Linux dùng host networking, health bind host `127.0.0.1:8080`, không publish/public listener. Bridge loopback cũ chỉ reachable trong namespace container; xem WP-08 trước đổi topology.
 - `WEB_PUSH_PAUSED` mặc định là `true`. Giá trị thiếu hoặc không phải boolean rõ ràng làm service dừng fail-closed; khi paused worker không claim và không dispatch.
 
 ## Provision và restart
@@ -15,23 +17,28 @@ Tài liệu này mô tả quy trình tương lai cho notification service trên 
 3. Cấu hình public artifact gồm `WEB_PUSH_VAPID_KEY_VERSION`, `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_FINGERPRINT` và `WEB_PUSH_VAPID_SUBJECT`. Go derive public key/fingerprint từ file private và so khớp artifact trước readiness và trước mỗi claim.
 4. Restart chỉ đọc lại file secret đã provision. Service không có nhánh tạo hoặc regenerate key. Thiếu file, key hỏng hoặc artifact lệch phải giữ readiness fail và không claim/send.
 
-`/readyz` chỉ chứng minh process đã nạp được private key và artifact cấu hình khớp. Khi paused, preflight cục bộ hợp lệ trả `200 paused` để operator có thể kiểm tra trước khi bật dispatch mà không claim. Khi dispatch được bật, readiness vẫn fail-closed cho tới khi có một chu kỳ claim/report backend hợp lệ. Đây không phải bằng chứng QLTBYT runtime controls, subscription catalog, registration hoặc provider từ xa đã khớp. Trước khi bật production, operator phải thực hiện riêng các kiểm tra read-only của hệ thống sở hữu public artifact và ghi nhận version/fingerprint; không dùng một HTTP 200 local để tuyên bố remote compatibility.
+Env mode paused preflight hợp lệ trả `200 paused`, chỉ chứng minh local artifact.
+File mode mọi app bắt buộc, paused trả per-app/aggregate503; active chỉ ready
+sau cycle backend hợp lệ, quá60s thành stale. Config/private file chỉ nạp lúc
+startup, không hot reload; preflight mỗi claim kiểm tra artifact đã nạp.
+Readiness không chứng minh source registration catalog/provider/device khớp;
+operator phải đối chiếu public artifact/version/fingerprint read-only tại app.
 
 ## Controlled rotation
 
 Thực hiện tuần tự, với cả registration và dispatch đều tắt:
 
 1. Pause registration và dispatch tại control plane; giữ pending intent/delivery và deadline nguyên trạng.
-2. Chờ các lease đang chạy tối đa 45 giây. Không kéo dài lease và không reset deadline.
+2. Dừng consumer, chờ mọi lease drain/hết theo max expiry tại source; QLTBYT thường45 giây, app khác phải kiểm tra riêng. Không kéo dài lease và không reset deadline.
 3. Backup cặp key cũ cùng version/fingerprint, kiểm tra khả năng khôi phục trước khi thay đổi.
-4. Provision cặp mới và public artifact tương ứng, đồng bộ version, public key, fingerprint và subject. Cập nhật secret mount bên ngoài container rồi restart/reload theo cơ chế được duyệt.
+4. Provision cặp mới và public artifact tương ứng, đồng bộ version, public key, fingerprint và subject. Cập nhật secret mount bên ngoài container rồi restart theo cơ chế được duyệt; không có hot reload.
 5. Đánh dấu subscription dùng version cũ cần resubscribe. Không gửi subscription cũ bằng key mới; user phải explicit unsubscribe/resubscribe để tạo revision mang version mới.
 6. Kiểm tra `/readyz` và artifact local khớp, sau đó kiểm tra riêng public artifact từ QLTBYT bằng kênh read-only được duyệt. Chỉ khi hai kiểm tra này khớp mới bật registration, rồi bật dispatch.
 7. Giữ cặp key cũ tối thiểu 7 ngày trong kho backup để rollback. Không xóa pending data hoặc làm lại mốc deadline trong thời gian này.
 
 ## Rollback
 
-1. Pause registration và dispatch, chờ tối đa 45 giây cho lease cũ kết thúc.
+1. Pause registration và dispatch, dừng consumer và chờ mọi lease cũ drain/hết theo max expiry thực tế của từng source.
 2. Chọn đúng một version tương thích đã được xác minh; khôi phục private key và public artifact cùng cặp, không trộn private của version này với public của version khác.
 3. Xác minh readiness local và kiểm tra read-only remote compatibility, sau đó bật registration và dispatch theo đúng thứ tự. Subscription đã tạo theo version mới vẫn cần resubscribe theo policy tương thích; không tự gửi bằng cặp không khớp.
 4. Giữ nguyên pending deadline và lịch retry backend. Ghi lại version được chọn, thời điểm pause/resume và lý do rollback.

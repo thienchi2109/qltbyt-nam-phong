@@ -1,0 +1,25 @@
+# Linux host networking keeps the validated listener on host loopback.
+# Standalone file: do not merge with the legacy environment-mode Compose.
+services:
+  web-push:
+    image: "${WEB_PUSH_IMAGE:?set WEB_PUSH_IMAGE to a digest-pinned image}"
+    restart: unless-stopped
+    init: true
+    read_only: true
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 15s
+    network_mode: host
+    environment:
+      WEB_PUSH_APPS_CONFIG_PATH: /run/secrets/apps.json
+      WEB_PUSH_HEALTH_ADDR: "127.0.0.1:8080"
+    volumes:
+      - type: bind
+        source: "${WEB_PUSH_APPS_SECRET_DIR:?set dedicated absolute secret directory outside Git}"
+        target: /run/secrets
+        read_only: true
+        bind:
+          create_host_path: false

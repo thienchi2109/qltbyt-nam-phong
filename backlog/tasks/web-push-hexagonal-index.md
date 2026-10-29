@@ -1,6 +1,6 @@
 # Web Push dùng chung — Hexagonal Backlog
 
-- Status: In Progress — WP-01–WP-06 merged local; WP-07 Done local/disposable; WP-08 To Do
+- Status: In Progress — WP-01–WP-06 merged local; WP-07 Done local/disposable; WP-08 preparation/rehearsal LOCAL complete, rollout pending
 - Created: 2026-10-28
 - Milestone: Shared Web Push / Hexagonal
 - Survey baseline: `af8002880066d04a47b3de8db4d1d3310d65d6a1`
@@ -46,6 +46,11 @@ không đổi. Done phạm vi local/disposable theo
 cutover/rollback triển khai vẫn INCOMPLETE trong WP-08, chưa rollout.
 Staged ordered gates và React Doctor 100/100 trên 3 file PASS; reviewer độc lập
 Spec/Standards PASS, chờ final reread tài liệu trước commit.
+WP-08 chuẩn bị image/config/runbook và historical-source -> shared image ->
+historical-source Docker rehearsal LOCAL PASS, gồm in-flight lease, backlog,
+app auth failure isolation/restart và source subscription preservation.
+Development artifact còn uncommitted, chờ review/exact-commit rerun; STAGING/LIVE
+và browser/device/cutover thực tế vẫn pending ngay trong WP-08, chưa rollout.
 
 ## Quyết định định hướng
 
@@ -74,7 +79,7 @@ Spec/Standards PASS, chờ final reread tài liệu trước commit.
 | [WP-05](WP-05-multi-app-runtime.md)                | Runtime nhiều app                    | WP-03, WP-04 | Merged main local `3a9ef09a`; review PASS                     |
 | [WP-06](WP-06-second-app-integration-proof.md)     | Chứng minh tích hợp app thứ hai      | WP-05        | Merged main local `91b6aba0`; fixture/review PASS             |
 | [WP-07](WP-07-qltbyt-compatibility-and-cutover.md) | Kiểm chứng tương thích và chuyển đổi | WP-06        | Done local/disposable; browser/device/deploy smoke INCOMPLETE |
-| [WP-08](WP-08-packaging-rollout-and-rollback.md)   | Đóng gói, runbook và rollout         | WP-07        | Artifact review được; rollout/rollback theo phê duyệt         |
+| [WP-08](WP-08-packaging-rollout-and-rollback.md)   | Đóng gói, runbook và rollout         | WP-07        | Preparation/rehearsal LOCAL complete; rollout pending         |
 
 WP-03 và WP-04 có thể làm song song sau WP-02 nếu giao rõ ownership các file
 dùng chung. Trước mỗi task, đối chiếu source hiện tại, cập nhật điểm chạm và

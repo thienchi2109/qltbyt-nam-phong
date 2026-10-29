@@ -86,9 +86,14 @@ credential, VAPID hoặc pause từ env một app. `WEB_PUSH_HEALTH_ADDR` vẫn 
 hình chung, mặc định `127.0.0.1:8080`, chỉ cho loopback IP tại port 8080.
 Không có hot reload; đổi cấu hình cần restart theo quy trình rollout được duyệt.
 
-Compose template hiện tại vẫn dành cho chế độ env một app. Muốn đóng gói chế
-độ JSON cần override environment và mount tất cả secret tương ứng; packaging,
-app thứ hai thật và rollout thuộc WP-06/WP-08, chưa được thao tác tại đây.
+Compose [docker-compose.yml](docker-compose.yml) dành cho env một app;
+[docker-compose.apps.yml](docker-compose.apps.yml) là file độc lập cho JSON,
+không merge hai file. [apps.example.json](apps.example.json) và
+[web-push.env.example](web-push.env.example) chỉ chứa placeholder. Cả hai dùng
+Linux host networking để listener vẫn ở host `127.0.0.1:8080`; bridge cũ bind
+loopback trong container không thể được sửa bằng publish port. Xem
+[runbook WP-08](packaging-rollout-rollback.vi.md) về quyền secret, preflight,
+observation và handoff; chưa rollout app thật.
 
 ## Capacity, fairness và lỗi riêng từng app
 

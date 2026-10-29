@@ -1,3 +1,5 @@
+# Linux-only host networking: health remains 127.0.0.1:8080 on the host.
+# Standalone legacy env mode; use docker-compose.apps.yml for JSON file mode.
 services:
   web-push:
     image: "${WEB_PUSH_IMAGE:?set WEB_PUSH_IMAGE to a digest-pinned image}"
@@ -9,7 +11,8 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
-    stop_grace_period: 10s
+    stop_grace_period: 15s
+    network_mode: host
     environment:
       WEB_PUSH_APP_ID: "${WEB_PUSH_APP_ID:-qltbyt}"
       WEB_PUSH_ORIGIN: "${WEB_PUSH_ORIGIN:?set WEB_PUSH_ORIGIN}"
@@ -29,15 +32,7 @@ services:
         uid: "65532"
         gid: "65532"
         mode: 0400
-    expose:
-      - "8080"
-    networks:
-      - web_push
 
 secrets:
   web_push_vapid_private_key:
     file: "${WEB_PUSH_VAPID_PRIVATE_KEY_FILE:?set WEB_PUSH_VAPID_PRIVATE_KEY_FILE outside Git}"
-
-networks:
-  web_push:
-    driver: bridge

@@ -5,3 +5,5 @@
 *.pem
 coverage
 tmp
+*_test.go
+*.test

@@ -205,6 +205,9 @@ func (s *secondAppSource) report(item qltbytReportItem) string {
 		job.done = true
 	case "endpoint_gone":
 		sub.active, job.done = false, true
+	case "unsafe_endpoint":
+		// A terminal delivery failure leaves the subscription/consent intact.
+		job.done = true
 	case "transient":
 		delay := 5
 		if item.RetryAfterSeconds != nil && *item.RetryAfterSeconds > delay {

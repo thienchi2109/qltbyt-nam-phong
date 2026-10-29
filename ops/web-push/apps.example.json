@@ -1,0 +1,28 @@
+[
+  {
+    "id": "qltbyt",
+    "origin": "https://qltbyt.example.test",
+    "worker_id": "oracle-web-push-1",
+    "hmac_key_id": "<existing-current-slot>",
+    "hmac_secret": "<existing-qltbyt-base64-secret>",
+    "vapid_version": "<existing-qltbyt-version>",
+    "vapid_public_key": "<existing-qltbyt-public-key>",
+    "vapid_fingerprint": "<existing-qltbyt-fingerprint>",
+    "vapid_path": "/run/secrets/qltbyt_vapid_private_key",
+    "vapid_subject": "mailto:operator@example.test",
+    "paused": true
+  },
+  {
+    "id": "second-app",
+    "origin": "https://second-app.example.test",
+    "worker_id": "oracle-web-push-1",
+    "hmac_key_id": "<independent-current-slot>",
+    "hmac_secret": "<independent-app-base64-secret>",
+    "vapid_version": "<independent-app-version>",
+    "vapid_public_key": "<independent-app-public-key>",
+    "vapid_fingerprint": "<independent-app-fingerprint>",
+    "vapid_path": "/run/secrets/second_app_vapid_private_key",
+    "vapid_subject": "mailto:operator@example.test",
+    "paused": true
+  }
+]
