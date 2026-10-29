@@ -2,7 +2,8 @@
 
 Tài liệu này mô tả rotation key riêng với code rollout. Mọi thao tác production
 vẫn cần approval cụ thể; packaging/health/handoff hiện hành theo
-[runbook WP-08](packaging-rollout-rollback.vi.md), chưa rollout STAGING/LIVE.
+[runbook WP-08](packaging-rollout-rollback.vi.md). Oracle code rollout đã có
+[evidence 2026-10-29](oracle-rollout-2026-10-29.vi.md); không đổi VAPID.
 
 ## Nguyên tắc triển khai
 

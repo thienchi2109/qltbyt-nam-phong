@@ -1,7 +1,9 @@
 # WP-08 — Packaging, rollout và rollback
 
-Chuẩn bị/rehearsal LOCAL hoàn tất; STAGING/LIVE rollout **PENDING**, chưa được
-ủy quyền. Runbook không cấp quyền deploy, sửa credential/VAPID, cron hay DB.
+Chuẩn bị/rehearsal LOCAL hoàn tất; Oracle QLTBYT env-mode đã rollout theo chỉ
+định người dùng ngày 2026-10-29, xem [evidence](oracle-rollout-2026-10-29.vi.md).
+Browser/device và rollback live chưa kiểm chứng. Runbook không tự cấp quyền
+cho deploy khác, sửa credential/VAPID, cron hay DB.
 Không thay subscription store, consent browser, atomic outbox hoặc quyền tại app.
 Service Go dùng wire v1 claim/report; wire không thêm `app_id`.
 
@@ -200,5 +202,5 @@ Một job/source in-memory không chứng minh storage durability, throughput ha
 device consent; test chỉ giữ synthetic subscription state không bị code đổi.
 
 Evidence và digest ghi tại [WP-08 task](../../backlog/tasks/WP-08-packaging-rollout-and-rollback.md).
-LOCAL/DISPOSABLE có thể PASS; STAGING/LIVE và device smoke vẫn PENDING, không
-đóng Done trước phạm vi rollout được duyệt và thực hiện ngay trong task này.
+LOCAL/DISPOSABLE và Oracle QLTBYT rollout đã có evidence riêng; device smoke,
+provider acceptance mới, nhiều app thực và rollback live còn pending trong WP-08.

@@ -1,6 +1,6 @@
 # WP-08 — Đóng gói service chung, runbook rollout và rollback
 
-- Status: In Progress — preparation/rehearsal LOCAL complete; STAGING/LIVE rollout pending
+- Status: In Progress — LOCAL rehearsal and Oracle QLTBYT rollout PASS; browser/device acceptance pending
 - Created: 2026-10-28
 - Milestone: Shared Web Push / Hexagonal
 - Dependencies: WP-07
@@ -124,7 +124,13 @@ implementation nêu trên, không được relabel thành artifact build từ co
 
 ## Phạm vi còn pending ngay trong WP-08
 
-STAGING/LIVE, inventory consumer thực tế, source backlog/lease metrics thật, browser/device
-smoke và cutover/rollback deployed **chưa làm/chưa được phép**. Không mở task
-follow-up để bỏ scope; WP-08 giữ In Progress đến khi rollout được chỉ định và
-thực hiện. Không có production credential/cron/VAPID/DB write hay deploy.
+Người dùng đã cho phép push/deploy Oracle và merge WP-08 vào main.
+[Oracle rollout 2026-10-29](../../ops/web-push/oracle-rollout-2026-10-29.vi.md):
+source `e56a89d7`, native ARM64 image, inventory/lease preflight, thay riêng
+consumer QLTBYT, health/ready và kiểm tra 22 container khác đều PASS.
+Giữ nguyên credential/VAPID/store và runtime controls; không ghi DB trực tiếp.
+
+Browser/device smoke, provider acceptance mới, nhiều app thực và rollback live
+chưa kiểm chứng. Không tạo notification test gửi người dùng trong phạm vi deploy.
+Không mở task follow-up để bỏ scope; các giới hạn nghiệm thu này giữ ngay trong
+WP-08. Không tự coi deployment health PASS là device delivery hoặc exactly-once.

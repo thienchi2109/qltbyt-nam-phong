@@ -1,6 +1,6 @@
 # Web Push dùng chung — Hexagonal Backlog
 
-- Status: In Progress — WP-01–WP-06 merged local; WP-07 Done local/disposable; WP-08 preparation/rehearsal LOCAL complete, rollout pending
+- Status: In Progress — WP-01–WP-08 merged main; Oracle QLTBYT rollout PASS; browser/device acceptance pending
 - Created: 2026-10-28
 - Milestone: Shared Web Push / Hexagonal
 - Survey baseline: `af8002880066d04a47b3de8db4d1d3310d65d6a1`
@@ -9,7 +9,8 @@
 
 Tái sử dụng service Web Push cho nhiều app bằng Ports & Adapters, chuyển đổi
 từng phần và giữ tương thích với QLTBYT. Chỉ Web Push, không gồm ZBS/Zalo.
-Trạng thái triển khai và evidence được cập nhật theo từng task; chưa rollout.
+Trạng thái triển khai và evidence được cập nhật theo từng task. Oracle QLTBYT
+đã rollout ngày 2026-10-29; các mốc local bên dưới là lịch sử validation.
 
 Tham chiếu người dùng cung cấp: `/root/docs/hexagonal-architect.md` trên VPS.
 Đây là hướng dẫn đánh giá kiến trúc cho LabOps; áp dụng các nguyên tắc tái sử
@@ -25,32 +26,35 @@ focused/full/race, vet và review độc lập PASS. WP-03 đã tách DTO v1 kh�
 local contract/full/race/vet và hai review độc lập PASS tại `0747ee38`, đã merge
 vào main local. WP-04 hoàn tất trusted app binding, config/auth/isolation tests,
 full/race/vet và hai review độc lập PASS tại `d827d03b`, đã merge vào main local
-và xóa branch. Chưa push hoặc rollout các thay đổi này.
+và xóa branch. Các thay đổi này đã push và nằm trong Oracle rollout của WP-08.
 WP-05 đã triển khai runtime nhiều app, bounded capacity, readiness/metrics và
 strict JSON config; local Go full/race/vet PASS. Điều phối viên review/verify
 và reviewer mới `gpt-6.1-sol/xhigh` review độc lập đều PASS, không có actionable
-findings; đã merge vào `main` local tại `3a9ef09a`, chưa push/deploy. Branch
+findings; đã merge vào `main` tại `3a9ef09a`, sau đó push/deploy trong WP-08. Branch
 `refactor/web-push-wp-05` vẫn được giữ lại.
 WP-06 đã thêm hai source HTTP v1 có state độc lập, chạy production runtime
 với local IDs trùng nhau; retry/idempotency/eligibility/revocation/crash fencing
 có fixture tests. Local Go focused/full/race/vet, gofmt, touched Markdown
 Prettier và diff whitespace PASS; điều phối viên review/verify và reviewer
 độc lập spec/quality đều PASS. Đã merge `main` local tại `91b6aba0`,
-chưa push/deploy; proof chỉ là fixture, chưa app/browser thật.
-Evidence chỉ FIXTURE / DISPOSABLE ONLY; app/browser thật và rollout chưa làm.
+đã push/deploy trong WP-08; proof WP-06 chỉ là fixture, chưa app/browser thật.
+Evidence WP-06 chỉ FIXTURE / DISPOSABLE ONLY; không là device delivery proof.
 WP-07 bổ sung route/lifecycle regression; local 119 PASS, signed SQL integration
 1 PASS trên disposable, SQL source regression RED → GREEN 5/5 PASS. Chỉ sửa test
 fixtures theo policy hiện hành, giữ quyền/read/atomicity assertions; production
 không đổi. Done phạm vi local/disposable theo
-[evidence](../../ops/web-push/qltbyt-compatibility-cutover.vi.md); browser/device và
-cutover/rollback triển khai vẫn INCOMPLETE trong WP-08, chưa rollout.
+[evidence](../../ops/web-push/qltbyt-compatibility-cutover.vi.md).
+Oracle cutover có evidence riêng; browser/device và rollback live chưa kiểm chứng.
 Staged ordered gates và React Doctor 100/100 trên 3 file PASS; reviewer độc lập
-Spec/Standards PASS, chờ final reread tài liệu trước commit.
+Spec/Standards PASS; WP-07 đã commit, merge main và push.
 WP-08 chuẩn bị image/config/runbook và historical-source -> shared image ->
 historical-source Docker rehearsal LOCAL PASS, gồm in-flight lease, backlog,
 app auth failure isolation/restart và source subscription preservation.
-Development artifact còn uncommitted, chờ review/exact-commit rerun; STAGING/LIVE
-và browser/device/cutover thực tế vẫn pending ngay trong WP-08, chưa rollout.
+Exact-commit image/rehearsal đã PASS; WP-08 đã merge main. Native ARM64 image
+từ source `e56a89d7` đã rollout riêng consumer QLTBYT trên Oracle, giữ nguyên
+credential/key/store. [Evidence](../../ops/web-push/oracle-rollout-2026-10-29.vi.md)
+ghi 22 container khác không đổi và health/ready PASS. Browser/device, provider
+acceptance mới, nhiều app thực và rollback live vẫn pending ngay trong WP-08.
 
 ## Quyết định định hướng
 
@@ -79,7 +83,7 @@ và browser/device/cutover thực tế vẫn pending ngay trong WP-08, chưa rol
 | [WP-05](WP-05-multi-app-runtime.md)                | Runtime nhiều app                    | WP-03, WP-04 | Merged main local `3a9ef09a`; review PASS                     |
 | [WP-06](WP-06-second-app-integration-proof.md)     | Chứng minh tích hợp app thứ hai      | WP-05        | Merged main local `91b6aba0`; fixture/review PASS             |
 | [WP-07](WP-07-qltbyt-compatibility-and-cutover.md) | Kiểm chứng tương thích và chuyển đổi | WP-06        | Done local/disposable; browser/device/deploy smoke INCOMPLETE |
-| [WP-08](WP-08-packaging-rollout-and-rollback.md)   | Đóng gói, runbook và rollout         | WP-07        | Preparation/rehearsal LOCAL complete; rollout pending         |
+| [WP-08](WP-08-packaging-rollout-and-rollback.md)   | Đóng gói, runbook và rollout         | WP-07        | Oracle QLTBYT rollout PASS; browser/device acceptance pending |
 
 WP-03 và WP-04 có thể làm song song sau WP-02 nếu giao rõ ownership các file
 dùng chung. Trước mỗi task, đối chiếu source hiện tại, cập nhật điểm chạm và
