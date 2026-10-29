@@ -78,7 +78,7 @@ BEGIN
   INSERT INTO public.don_vi(id, name, dia_ban_id)
   VALUES (2147400001, 'Web Push Phase 4', 2147400001);
   INSERT INTO public.nhan_vien(id, username, password, role, don_vi, dia_ban_id, khoa_phong)
-  VALUES (2147400001, 'webpush-p4-user', 'unused', 'user', 2147400001, 2147400001, 'CT');
+  VALUES (2147400001, 'webpush-p4-user', 'unused', 'to_qltb', 2147400001, 2147400001, 'CT');
   INSERT INTO public.thiet_bi(id, ma_thiet_bi, ten_thiet_bi, don_vi, khoa_phong_quan_ly, is_deleted)
   VALUES (2147400001, 'WEBPUSH-P4', 'Phase 4 test', 2147400001, 'CT', false);
   INSERT INTO public.yeu_cau_sua_chua(id, thiet_bi_id, mo_ta_su_co)
@@ -151,7 +151,7 @@ BEGIN
       'keys', jsonb_build_object('p256dh', v_key, 'auth', v_auth)
     ), 'staging-20260910-01'
   );
-  UPDATE public.nhan_vien SET role = 'user' WHERE id = 2147400001;
+  UPDATE public.nhan_vien SET role = 'to_qltb' WHERE id = 2147400001;
   PERFORM set_config('request.jwt.claims', '', true);
 
   PERFORM pg_temp.web_push_phase4_expect_error(

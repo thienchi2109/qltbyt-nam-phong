@@ -30,6 +30,9 @@ BEGIN
   PERFORM set_config('request.jwt.claims','{"app_role":"admin","user_id":"2147000001"}',true);
   ASSERT public.web_push_subject_can_receive(2147000002,2147000001), 'config permits no subscription';
   ASSERT public.web_push_subject_can_receive(2147000002,2147000001,2147000001), 'normalized department';
+  -- Repair read access alone is insufficient for current recipient policy.
+  PERFORM pg_temp.web_push_expect_error($q$SELECT public.web_push_recipient_config_set(2147000001,ARRAY['webpush-user'])$q$,'22023');
+  UPDATE public.nhan_vien SET role='to_qltb' WHERE id=2147000002;
   r := public.web_push_recipient_config_set(2147000001,ARRAY[' WebPush-USER ','webpush-user','']);
   ASSERT jsonb_array_length(r->'recipients')=1, 'trim lowercase dedupe';
   PERFORM pg_temp.web_push_expect_error($q$SELECT public.web_push_recipient_config_set(2147000001,ARRAY['webpush-user','missing-user'])$q$,'22023');

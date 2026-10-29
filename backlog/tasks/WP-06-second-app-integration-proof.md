@@ -1,6 +1,6 @@
 # WP-06 — Chứng minh tích hợp app thứ hai qua contract chung
 
-- Status: Done — fixture/local gates và independent review PASS; chưa merge/push
+- Status: Done — merged main local tại `91b6aba0`; fixture/local gates và independent review PASS; chưa push
 - Created: 2026-10-28
 - Milestone: Shared Web Push / Hexagonal
 - Dependencies: WP-05
@@ -79,6 +79,6 @@ gofmt, touched Markdown Prettier và whitespace: PASS. Reviewer độc lập
 `3a9ef09a`: spec PASS, quality PASS, không có findings; reviewer không chạy lại
 tests, bằng chứng thực chạy thuộc lane kiểm chứng riêng của điều phối viên.
 
-Commit local trên branch WP-06; chưa merge/push/deploy, chưa gửi provider thật
+Đã merge main local tại `91b6aba0`; chưa push/deploy, chưa gửi provider thật
 hoặc kiểm chứng app/browser thật. Không thay dependency, TS/React hoặc SQL;
 các gate TS/React/Database không áp dụng cho diff này.

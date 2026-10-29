@@ -74,7 +74,7 @@ run("web push Phase 4 disposable worker contract", () => {
             INSERT INTO public.nhan_vien(
               id, username, password, role, don_vi, dia_ban_id, khoa_phong
             ) VALUES (
-              ${id}, ${`webpush-${id}`}, 'unused', 'user', ${id}, ${id}, 'CT'
+              ${id}, ${`webpush-${id}`}, 'unused', 'to_qltb', ${id}, ${id}, 'CT'
             )
           `
           await active`

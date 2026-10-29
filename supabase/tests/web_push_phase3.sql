@@ -5,7 +5,7 @@ INSERT INTO public.don_vi(id,name,dia_ban_id) VALUES
   (2146000001,'Push P3 A',2146000001),(2146000002,'Push P3 B',2146000001);
 INSERT INTO public.nhan_vien(id,username,password,role,don_vi,dia_ban_id,khoa_phong) VALUES
   (2146000001,'webpush-p3-admin','unused','admin',2146000002,2146000001,NULL),
-  (2146000002,'webpush-p3-user','unused','user',2146000001,2146000001,'CT'),
+  (2146000002,'webpush-p3-user','unused','to_qltb',2146000001,2146000001,'CT'),
   (2146000003,'webpush-p3-other','unused','to_qltb',2146000002,2146000001,NULL),
   (2146000004,'webpush-p3-later','unused','to_qltb',2146000001,2146000001,NULL);
 INSERT INTO public.thiet_bi(id,ma_thiet_bi,ten_thiet_bi,don_vi,khoa_phong_quan_ly,tinh_trang_hien_tai,is_deleted) VALUES
@@ -56,10 +56,11 @@ BEGIN
   ASSERT NOT EXISTS (SELECT 1 FROM public.web_push_notification_intents WHERE request_id=v_id), 'no recipients means no cross-tenant fallback';
   ASSERT (SELECT count(*)=1 FROM public.zbs_notification_outbox WHERE source_id=v_id), 'empty push config preserves ZBS';
   INSERT INTO public.web_push_recipient_configs(don_vi_id,user_id) VALUES (2146000001,2146000002),(2146000001,2146000003);
-  UPDATE public.nhan_vien SET khoa_phong='Other' WHERE id=2146000002;
+  UPDATE public.nhan_vien SET role='user',khoa_phong='Other' WHERE id=2146000002;
+  ASSERT NOT public.web_push_subject_can_receive(2146000002,2146000001,2146000001), 'user with another department cannot read request';
   v_id := public.repair_request_create(2146000001,'Denied subjects',NULL,NULL,'Requester',NULL,NULL);
   ASSERT NOT EXISTS (SELECT 1 FROM public.web_push_notification_intents WHERE request_id=v_id), 'request-specific department and current tenant authorization';
-  UPDATE public.nhan_vien SET khoa_phong='CT' WHERE id=2146000002;
+  UPDATE public.nhan_vien SET role='to_qltb',khoa_phong='CT' WHERE id=2146000002;
   UPDATE public.web_push_runtime_controls SET enqueue_enabled=false WHERE singleton;
   v_id := public.repair_request_create(2146000001,'Disabled again',NULL,NULL,'Requester',NULL,NULL);
   ASSERT NOT EXISTS (SELECT 1 FROM public.web_push_notification_intents WHERE request_id=v_id), 'control stops new intents';
@@ -78,7 +79,7 @@ $$;
 CREATE FUNCTION pg_temp.web_push_fail_enqueue()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF NEW.payload->>'body' LIKE '%P3 injected failure' THEN
+  IF NEW.payload->>'body' LIKE '%P3 injected failure%' THEN
     ASSERT EXISTS (SELECT 1 FROM public.zbs_notification_outbox WHERE source_id=NEW.request_id), 'ZBS inserted before push failure';
     ASSERT EXISTS (SELECT 1 FROM public.lich_su_thiet_bi WHERE yeu_cau_id=NEW.request_id), 'history inserted before push failure';
     ASSERT EXISTS (SELECT 1 FROM public.audit_logs WHERE entity_type='repair_request' AND entity_id=NEW.request_id), 'audit inserted before push failure';
@@ -142,6 +143,7 @@ DECLARE
   v_title_start integer;
 BEGIN
   UPDATE public.nhan_vien SET role='to_qltb' WHERE id=2146000002;
+  UPDATE public.thiet_bi SET ten_thiet_bi='Máy siêu âm' WHERE id=2146000001;
   UPDATE public.thiet_bi SET khoa_phong_quan_ly=NULL WHERE id=2146000001;
   ASSERT (SELECT ten_thiet_bi='Máy siêu âm' AND khoa_phong_quan_ly IS NULL
     FROM public.thiet_bi WHERE id=2146000001), 'null fixture clears department only';
